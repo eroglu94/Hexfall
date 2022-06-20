@@ -9,12 +9,15 @@ public class GameManager : MonoBehaviour
     [SerializeReference] private GameObject _hexagonPrefab;
 
 
+    private InputManager inputManager;
+
     // Start is called before the first frame update
     void Start()
     {
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None); // Remove stack trace of Debug.Log messages
 
         StartGame();
+        inputManager = InputManager.Instance;
     }
 
     // Update is called once per frame
@@ -60,10 +63,8 @@ public class GameManager : MonoBehaviour
             hexGameObject.transform.localScale = Vector2.one * hex.HexagonSize;
             hexGameObject.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
             //---------------------------------
-            
+
         }
-
-
     }
 
 
