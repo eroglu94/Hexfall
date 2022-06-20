@@ -1,28 +1,32 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using UnityEngine;
+using Quaternion = UnityEngine.Quaternion;
 using Random = UnityEngine.Random;
+using Vector2 = UnityEngine.Vector2;
 
 public class GridManager : MonoBehaviour
 {
-    [SerializeReference] Vector2 _canvasSize;
-    public GameObject HexagonPrefab;
+    [SerializeReference] private Vector2 _canvasSize;
+    [SerializeReference] private GameObject _hexagonPrefab; //TODO transfer this GameManager
 
-    private List<Hex> HexGrid;
+    public List<Hex> HexGrid = new List<Hex>();
 
-    struct Hex
+    public class Hex
     {
         public Vector2 Location;
         public Vector2 AxialCoords;
         public Vector2 OffsetCoords;
-        public List<Vector2> Neighbors;
-
+        public float HexagonSize;
+        public List<Hex> Neighbors;
+        public GameObject GameObject;
     }
 
     // Start is called before the first frame update
     void Start()
     {
-        
+
     }
 
     // Update is called once per frame
@@ -30,81 +34,8 @@ public class GridManager : MonoBehaviour
     {
 
     }
-    public void Deneme()
-    {
-        // We need $sizeOfCanvas and $gridSize to calculate each #hexagon size to fit the canvas;
 
-
-        // Get Canvas Size
-        RectTransform parentCanvas = GetComponentInParent<Canvas>().GetComponent<RectTransform>();
-        Vector2 canvasWidthHeight = new Vector2(parentCanvas.rect.width, parentCanvas.rect.height);
-        _canvasSize = canvasWidthHeight;
-
-
-        // Vector2 canvasSize = new Vector2(800, 1100); //height, width in pixel
-        Vector2 gridSize = new Vector2(8, 9);
-
-        // Get Random Colors
-
-        // Find maximum size of 1 hexagon to fit screen
-        var hexagonSize = _canvasSize.y / (gridSize.y - 0.5f) > _canvasSize.x / (gridSize.x - 1f) ? _canvasSize.x / (gridSize.x - 1f) : _canvasSize.y / (gridSize.y - 0.5f);
-        Debug.Log($"Hexagon Size: {hexagonSize}");
-
-
-
-        // Create hexagons
-        var hexagons = new List<List<GameObject>>(); //Store Hexagons
-        Vector2 initialPosition = new Vector2(0, 0); // Initial Positions
-        Quaternion rotation = new Quaternion(0, 0, 0, 0);
-        var hexagonColorPalette = GenerateRandomColors(10);
-        int counter = 0;
-        for (int row = 0; row < gridSize.y; row++)
-        {
-            var tempPos = initialPosition;
-            for (int column = 0; column < gridSize.x; column++)
-            {
-
-                tempPos.x = initialPosition.x + (hexagonSize * column * 0.75f) + (5 * column); // inital position + offset + margin
-                tempPos.y = initialPosition.y - (hexagonSize * row * 0.85f) - (5 * row); // inital position - offset - margin
-
-                //We need extra -y margin to odd columns. So we need to calculate odd-even columns to arrange hexagons, since they need to fit each other
-                if (column % 2 != 0)
-                {   //Column is odd
-                    tempPos.y = initialPosition.y - (hexagonSize * row * 0.85f) - (hexagonSize / 2.30f) - (5 * row); //Extra -y margin to odd
-                }
-
-
-                //// TEST
-                //var test = HexagonPrefab.GetComponent<Hexagon>();
-                //var test2 = new Hexagon(new Vector2(), new Color());
-                //var test3 = HexagonPrefab;
-
-
-                HexagonPrefab.GetComponent<Hexagon>().Color = hexagonColorPalette[Random.Range(0, hexagonColorPalette.Count)];
-
-                HexagonPrefab.GetComponent<Hexagon>().Location = tempPos;
-
-                HexagonPrefab.GetComponent<Hexagon>().CreationOrder = counter; //TEST
-                counter++; //TEST
-
-                HexagonPrefab.GetComponent<Hexagon>().OffsetCoord = new Vector2(column, row);
-                HexagonPrefab.GetComponent<Hexagon>().AxialCoord = OddqToAxialCoordinate(new Vector2(column, row));
-
-
-
-                GameObject obj = Instantiate(HexagonPrefab, tempPos, rotation) as GameObject;
-                obj.transform.localScale = Vector2.one * hexagonSize;
-                obj.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
-
-                //Debug.Log($"[{column},{row}]");
-            }
-
-            //initialPosition.y = hexagonSize * row;
-        }
-
-    }
-
-    void InitializeGrid(Vector2 gridSize)
+    public void InitializeGrid(Vector2 gridSize)
     {
         // Create & Align grid
         // Store coordinates for future usage
@@ -115,7 +46,6 @@ public class GridManager : MonoBehaviour
         RectTransform parentCanvas = GetComponentInParent<Canvas>().GetComponent<RectTransform>();
         Vector2 canvasWidthHeight = new Vector2(parentCanvas.rect.width, parentCanvas.rect.height);
         _canvasSize = canvasWidthHeight;
-
 
         // Find maximum size of 1 hexagon to fit screen
         var hexagonSize = _canvasSize.y / (gridSize.y - 0.5f) > _canvasSize.x / (gridSize.x - 1f) ? _canvasSize.x / (gridSize.x - 1f) : _canvasSize.y / (gridSize.y - 0.5f);
@@ -152,21 +82,46 @@ public class GridManager : MonoBehaviour
                 {
                     Location = tempPos,
                     OffsetCoords = new Vector2(column, row),
-                    AxialCoords = OddqToAxialCoordinate(new Vector2(column, row))
-                    //newHex.Neighbors = 
+                    AxialCoords = OddqToAxialCoordinate(new Vector2(column, row)),
+                    HexagonSize = hexagonSize
+                    
                 };
 
                 HexGrid.Add(newHex);
-
-                //Debug.Log($"[{column},{row}]");
             }
 
-            //initialPosition.y = hexagonSize * row;
+
+        }
+
+        //TODO align all hexes in the middle of canvas !important
+
+        // find available neighbors of all hexes
+        foreach (var hex in HexGrid)
+        {
+            // Find all possible neighbors
+            // Eliminate the neighbors that does not exist
+            //--------------------------------------------
+
+            //Finding all neighbors
+            var allNeighbors = GetAxialNeighborsCoordinates(hex.AxialCoords);
+            var actualNeighbors = new List<Hex>();
+
+            //Eliminating neighbors
+            foreach (var possibleNeighbor in allNeighbors)
+            {
+                if (HexGrid.Exists(x => x.AxialCoords == possibleNeighbor))
+                {   //Neighbor Exists
+                    actualNeighbors.Add(HexGrid.Find(x => x.AxialCoords == possibleNeighbor));
+                }
+            }
+
+
+            hex.Neighbors = actualNeighbors; //TEST burayý kontrol et. deep copy mi yapýyor belli deðil
         }
     }
 
     /// <summary>
-    /// Calculates Axial Coordinates of all neighbors of Hexagon
+    /// Calculates Axial Coordinates of all neighbors of given Hexagon
     /// </summary>
     /// <param name="location">Axial Coordinate of Hexagon (column,row)</param>
     /// <returns></returns>
@@ -206,8 +161,12 @@ public class GridManager : MonoBehaviour
         return new Vector2(column, row);
     }
 
+
+    
     List<Color> GenerateRandomColors(int numberOfColors)
     {
+        //TODO delete this function. Transfer it to GameManager.cs
+
         var colorList = new List<Color>();
 
         //for (int i = 0; i < numberOfColors; i++)
@@ -242,5 +201,4 @@ public class GridManager : MonoBehaviour
 
         return colorList;
     }
-
 }

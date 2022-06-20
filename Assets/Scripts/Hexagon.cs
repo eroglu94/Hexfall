@@ -5,16 +5,9 @@ using UnityEngine;
 public class Hexagon : MonoBehaviour
 {
     // Start is called before the first frame update
-    public Vector3 Location;
     public Color Color;
-    public Vector3 AxialCoord;
-    public Vector3 OffsetCoord; //odd-q coordinate
-    public int CreationOrder;
-
-    public Hexagon(Vector3 location, Color color)
+    public Hexagon(Color color)
     {
-        this.Location = location;
-
         this.GetComponent<SpriteRenderer>().color = color;
         this.Color = color;
     }
