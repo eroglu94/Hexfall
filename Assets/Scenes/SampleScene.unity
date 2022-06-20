@@ -270,6 +270,7 @@ GameObject:
   - component: {fileID: 246696062}
   - component: {fileID: 246696061}
   - component: {fileID: 246696060}
+  - component: {fileID: 246696064}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Screen
@@ -365,6 +366,18 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &246696064
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246696059}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f275a639562d0da418795ab5e57d46df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &473361670
 GameObject:
   m_ObjectHideFlags: 0
@@ -926,7 +939,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _canvasSize: {x: 0, y: 0}
-  HexagonPrefab: {fileID: 558143541093072352, guid: beff3f323d34efa4594f2d4e0680aa7a, type: 3}
+  _hexagonPrefab: {fileID: 0}
+  HexGrid: []
 --- !u!114 &850484478
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -939,8 +953,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8db628e0d6274564eacef132d04aca4b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  NumberOfColors: 10
-  GridSize: {x: 8, y: 9}
+  _numberOfColors: 5
+  _gridSize: {x: 8, y: 9}
+  _hexagonPrefab: {fileID: 558143541093072352, guid: beff3f323d34efa4594f2d4e0680aa7a, type: 3}
 --- !u!1 &1415517727
 GameObject:
   m_ObjectHideFlags: 0

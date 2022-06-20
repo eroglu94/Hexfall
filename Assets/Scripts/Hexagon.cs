@@ -6,6 +6,7 @@ public class Hexagon : MonoBehaviour
 {
     // Start is called before the first frame update
     public Color Color;
+    public GridManager.Hex Hex;
     public Hexagon(Color color)
     {
         this.GetComponent<SpriteRenderer>().color = color;
@@ -14,6 +15,7 @@ public class Hexagon : MonoBehaviour
 
     void Start()
     {
+
         this.GetComponent<SpriteRenderer>().color = Color;
     }
 

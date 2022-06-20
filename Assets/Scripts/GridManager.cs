@@ -13,14 +13,14 @@ public class GridManager : MonoBehaviour
 
     public List<Hex> HexGrid = new List<Hex>();
 
+    [System.Serializable]
     public class Hex
     {
         public Vector2 Location;
         public Vector2 AxialCoords;
         public Vector2 OffsetCoords;
         public float HexagonSize;
-        public List<Hex> Neighbors;
-        public GameObject GameObject;
+        public List<Vector2> Neighbors;
     }
 
     // Start is called before the first frame update
@@ -104,14 +104,14 @@ public class GridManager : MonoBehaviour
 
             //Finding all neighbors
             var allNeighbors = GetAxialNeighborsCoordinates(hex.AxialCoords);
-            var actualNeighbors = new List<Hex>();
+            var actualNeighbors = new List<Vector2>();
 
             //Eliminating neighbors
             foreach (var possibleNeighbor in allNeighbors)
             {
                 if (HexGrid.Exists(x => x.AxialCoords == possibleNeighbor))
                 {   //Neighbor Exists
-                    actualNeighbors.Add(HexGrid.Find(x => x.AxialCoords == possibleNeighbor));
+                    actualNeighbors.Add(possibleNeighbor);
                 }
             }
 

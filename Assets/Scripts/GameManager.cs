@@ -52,6 +52,7 @@ public class GameManager : MonoBehaviour
         {
             // Set Properties of temporary Hexagon Prefab
             _hexagonPrefab.GetComponent<Hexagon>().Color = PickRandomColor(numberOfColors);
+            _hexagonPrefab.GetComponent<Hexagon>().Hex = hex;
             //----------------------------
 
             // Instantiate and spawn inital hexes
@@ -59,8 +60,7 @@ public class GameManager : MonoBehaviour
             hexGameObject.transform.localScale = Vector2.one * hex.HexagonSize;
             hexGameObject.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
             //---------------------------------
-
-            hex.GameObject = hexGameObject;
+            
         }
 
 
