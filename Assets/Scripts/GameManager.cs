@@ -10,7 +10,7 @@ public class GameManager : MonoBehaviour
     [SerializeReference] private GameObject _hexagonPrefab;
 
     private GameObject _selectedHexagon;
-    private List<GridManager.Hex> _hexGrid;
+    private List<GridManager.HexTile> _hexTiles;
 
     private InputManager inputManager;
 
@@ -31,8 +31,17 @@ public class GameManager : MonoBehaviour
             if (inputManager.Hit != null)
             {
                 _selectedHexagon = inputManager.Hit;
-                _selectedHexagon.GetComponent<SpriteRenderer>().color = Color.black;
+                //_selectedHexagon.GetComponent<Hexagon>().Color = Color.black;
 
+                ////Find Neigbors and select them
+                //var neighbors = FindNeighborObjects(_selectedHexagon.GetComponent<Hexagon>().CurrentTile.Neighbors);
+
+                //foreach (var element in neighbors)
+                //{
+                //    element.Color = Color.black;
+                //}
+
+                AlignSelectionImage(_selectedHexagon.GetComponent<Hexagon>());
 
             }
         }
@@ -49,10 +58,10 @@ public class GameManager : MonoBehaviour
         var gridManager = GetComponent<GridManager>();
 
         // Initialize Grid
-        _hexGrid = gridManager.InitializeGrid(_gridSize);
+        _hexTiles = gridManager.InitializeGrid(_gridSize);
 
         //Initialize HexPrefabs
-        InitializeHexes(_hexGrid, _numberOfColors);
+        InitializeHexes(_numberOfColors);
 
     }
 
@@ -61,34 +70,134 @@ public class GameManager : MonoBehaviour
 
     }
 
-    void InitializeHexes(List<GridManager.Hex> hexGrid, int numberOfColors)
+    void InitializeHexes(int numberOfColors)
     {
         // Initialize Hexes according to hexgrid data.
-        foreach (var hex in hexGrid)
+        foreach (var hexTile in _hexTiles)
         {
-            // Set Properties of temporary Hexagon Prefab
+            // Set Properties of temporary HexTile Prefab
             _hexagonPrefab.GetComponent<Hexagon>().Color = PickRandomColor(numberOfColors);
-            _hexagonPrefab.GetComponent<Hexagon>().Hex = hex;
+            _hexagonPrefab.GetComponent<Hexagon>().CurrentTile = hexTile;
             //----------------------------
 
             // Instantiate and spawn inital hexes
-            GameObject hexGameObject = Instantiate(_hexagonPrefab, hex.Location, Quaternion.identity);
-            hexGameObject.transform.localScale = Vector2.one * hex.HexagonSize;
+            GameObject hexGameObject = Instantiate(_hexagonPrefab, hexTile.Location, Quaternion.identity);
+            hexGameObject.transform.localScale = Vector2.one * hexTile.HexagonSize;
             hexGameObject.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
             //---------------------------------
 
+            hexTile.Hexagon = hexGameObject.GetComponent<Hexagon>();
         }
     }
 
-    List<GameObject> FindNeighorObjects(List<GridManager.Hex> hexGrid, List<Vector2> neighbors)
+    List<Hexagon> FindNeighborObjects(List<GridManager.HexTileNeighbor> neighbors)
     {
-        var neighborsGameObjects = new List<GameObject>();
+        var neighborGameObjects = new List<Hexagon>();
 
-        foreach (var neighborVector in neighbors)
+        foreach (var neighbor in neighbors)
         {
-                neighborsGameObjects.Add();
+            var element = _hexTiles.Find(x => x.AxialCoords == neighbor.AxialCordinate);
+
+            neighborGameObjects.Add(element.Hexagon);
+
         }
+        return neighborGameObjects;
     }
+
+    List<Hexagon> FindNeighborObjects2(List<GridManager.HexTileNeighbor> neighbors)
+    {
+        var neighborGameObjects = new List<Hexagon>();
+
+        foreach (var neighbor in neighbors)
+        {
+            var element = _hexTiles.Find(x => x.AxialCoords == neighbor.AxialCordinate);
+
+            if (neighborGameObjects.Count == 1)
+            {
+                // Check if previously founded neighbor is also neigbor of the current one.
+                //neighborGameObjects[0];
+                //element
+                if (element.AllNeighbors.Exists(x => x.AxialCordinate == neighborGameObjects[0].CurrentTile.AxialCoords))
+                {
+                    neighborGameObjects.Add(element.Hexagon);
+                    return neighborGameObjects;
+                }
+                continue; // Continue the loop until find suitable neighbor
+            }
+
+            neighborGameObjects.Add(element.Hexagon);
+
+            // Returns when found 2 neighbours.
+            if (neighborGameObjects.Count == 2)
+            {
+                return neighborGameObjects;
+            }
+        }
+
+        // Code should never come to this line.
+        return new List<Hexagon>();
+    }
+
+
+
+    #region Selection
+
+    void AlignSelectionImage(Hexagon hexagon)
+    {
+        // Find middle point of 2 neighbors and hexagon itself and place selection image at that point
+        // Find order of neighbors and rotate the selection image
+        // -----------------------------------------
+
+
+        // Find neighbor objects and calculate the center Point
+        var neigbors = FindNeighborObjects(hexagon.CurrentTile.Neighbors);
+
+        var p1 = hexagon.CurrentTile.Location;
+        var p2 = neigbors[0].CurrentTile.Location;
+        var p3 = neigbors[1].CurrentTile.Location;
+
+        var centerPoint = new Vector2((p1.x + p2.x + p3.x) / 3, (p1.y + p2.y + p3.y) / 3);
+        GameObject.FindGameObjectWithTag("Selection").transform.localPosition = centerPoint;
+        //--------------------------------------------------------
+
+        // Find order of neighbors and rotate the selection image
+        var n1 = hexagon.CurrentTile.Neighbors[0].name;
+        var n2 = hexagon.CurrentTile.Neighbors[1].name;
+        var r = n1 + n2;
+        var angle = 0;
+        switch (r)
+        {
+            case "NNW":
+                angle = 60;
+                break;
+            case "NWSW":
+                angle = 0;
+                break;
+            case "SWS":
+                angle = 60;
+                break;
+            case "SSE":
+                angle = 0;
+                break;
+            case "SENE":
+                angle = 0;
+                break;
+            case "NEN":
+                angle = 0;
+                break;
+            default:
+                break;
+
+        }
+
+        GameObject.FindGameObjectWithTag("Selection").transform.localRotation = new Quaternion(0, 0, angle, 0);
+
+
+
+    }
+
+    #endregion
+
 
     #region Utility
 

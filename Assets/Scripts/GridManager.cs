@@ -12,14 +12,22 @@ public class GridManager : MonoBehaviour
     [SerializeReference] private GameObject _hexagonPrefab; //TODO transfer this GameManager
 
     [System.Serializable]
-    public class Hex
+    public class HexTile
     {
         public Vector2 Location;
         public Vector2 AxialCoords;
         public Vector2 OffsetCoords;
         public float HexagonSize;
-        public List<Vector2> Neighbors;
-        public GameObject Hexagon;
+        public List<HexTileNeighbor> AllNeighbors;
+        public List<HexTileNeighbor> Neighbors;
+        public Hexagon Hexagon;
+    }
+
+    [System.Serializable]
+    public class HexTileNeighbor
+    {
+        public string name;
+        public Vector2 AxialCordinate;
     }
 
     // Start is called before the first frame update
@@ -34,9 +42,9 @@ public class GridManager : MonoBehaviour
 
     }
 
-    public List<Hex> InitializeGrid(Vector2 gridSize)
+    public List<HexTile> InitializeGrid(Vector2 gridSize)
     {
-        List<Hex> HexGrid = new List<Hex>();
+        List<HexTile> hexTiles = new List<HexTile>();
         // Create & Align grid
         // Store coordinates for future usage
         //----------------------------------------------------
@@ -49,7 +57,7 @@ public class GridManager : MonoBehaviour
 
         // Find maximum size of 1 hexagon to fit screen
         var hexagonSize = _canvasSize.y / (gridSize.y - 0.5f) > _canvasSize.x / (gridSize.x - 1f) ? _canvasSize.x / (gridSize.x - 1f) : _canvasSize.y / (gridSize.y - 0.5f);
-        Debug.Log($"Hexagon Size: {hexagonSize}");
+        Debug.Log($"HexTile Size: {hexagonSize}");
 
 
         // Create hexagons
@@ -73,12 +81,12 @@ public class GridManager : MonoBehaviour
 
 
                 //// TEST
-                //var test = HexagonPrefab.GetComponent<Hexagon>();
-                //var test2 = new Hexagon(new Vector2(), new Color());
+                //var test = HexagonPrefab.GetComponent<HexTile>();
+                //var test2 = new HexTile(new Vector2(), new Color());
                 //var test3 = HexagonPrefab;
 
 
-                var newHex = new Hex
+                var newHex = new HexTile
                 {
                     Location = tempPos,
                     OffsetCoords = new Vector2(column, row),
@@ -87,16 +95,16 @@ public class GridManager : MonoBehaviour
 
                 };
 
-                HexGrid.Add(newHex);
+                hexTiles.Add(newHex);
             }
 
-            
+
         }
 
         //TODO align all hexes in the middle of canvas !important
 
         // find available neighbors of all hexes
-        foreach (var hex in HexGrid)
+        foreach (var hex in hexTiles)
         {
             // Find all possible neighbors
             // Eliminate the neighbors that does not exist
@@ -104,41 +112,104 @@ public class GridManager : MonoBehaviour
 
             //Finding all neighbors
             var allNeighbors = GetAxialNeighborsCoordinates(hex.AxialCoords);
-            var actualNeighbors = new List<Vector2>();
+            var actualNeighbors = new List<HexTileNeighbor>();
 
             //Eliminating neighbors
             foreach (var possibleNeighbor in allNeighbors)
             {
-                if (HexGrid.Exists(x => x.AxialCoords == possibleNeighbor))
+                if (hexTiles.Exists(x => x.AxialCoords == possibleNeighbor.AxialCordinate))
                 {   //Neighbor Exists
                     actualNeighbors.Add(possibleNeighbor);
                 }
             }
 
 
-            hex.Neighbors = actualNeighbors; //TEST burayý kontrol et. deep copy mi yapýyor belli deðil
+            hex.AllNeighbors = actualNeighbors; //TEST burayý kontrol et. deep copy mi yapýyor belli deðil
         }
-        return HexGrid;
+
+        // Find 2 neighbors for selection of all hexes
+        foreach (var hex in hexTiles)
+        {
+            var allNeighbors = hex.AllNeighbors;
+            var selectionNeighbors = new List<HexTileNeighbor>();
+            var previousTile = new HexTile();
+
+            foreach (var possibleSelectionNeighbor in allNeighbors)
+            {
+
+                var neighborTile = hexTiles.Find(x => x.AxialCoords == possibleSelectionNeighbor.AxialCordinate);
+
+                if (selectionNeighbors.Count == 1)
+                {
+                    // Check if previously founded neighbor is also neigbor of the current one.
+                    if (neighborTile.AllNeighbors.Exists(x => x.AxialCordinate == previousTile.AxialCoords))
+                    {
+                        selectionNeighbors.Add(possibleSelectionNeighbor);
+                        break;
+                    }
+                    continue; // Continue the loop until find suitable neighbor
+                }
+
+                previousTile = neighborTile;
+                selectionNeighbors.Add(possibleSelectionNeighbor);
+
+            }
+
+            hex.Neighbors = selectionNeighbors;
+        }
+
+
+        return hexTiles;
     }
 
     /// <summary>
-    /// Calculates Axial Coordinates of all neighbors of given Hexagon
+    /// Calculates Axial Coordinates of all neighbors of given HexTile
     /// </summary>
-    /// <param name="location">Axial Coordinate of Hexagon (column,row)</param>
+    /// <param name="location">Axial Coordinate of HexTile (column,row)</param>
     /// <returns></returns>
-    List<Vector2> GetAxialNeighborsCoordinates(Vector2 location)
+    List<HexTileNeighbor> GetAxialNeighborsCoordinates(Vector2 location)
     {
-        var axialNeighbors = new List<Vector2>();
-        Vector2[] axialDirectionVectors =
+        var axialNeighbors = new List<HexTileNeighbor>();
+        HexTileNeighbor[] axialDirectionVectors =
         {
-            new Vector2(+1, 0), new Vector2(+1, -1), new Vector2(0, -1),
-            new Vector2(-1, 0), new Vector2(-1, +1), new Vector2(0, +1),
+            new HexTileNeighbor
+            {
+                AxialCordinate = new Vector2(0,-1),
+                name = "N"
+            },
+            new HexTileNeighbor
+            {
+                AxialCordinate = new Vector2(-1,0),
+                name = "NW"
+            },new HexTileNeighbor
+            {
+                AxialCordinate = new Vector2(-1,+1),
+                name = "SW"
+            }, new HexTileNeighbor
+            {
+                AxialCordinate = new Vector2(0, +1),
+                name = "S"
+            },
+            new HexTileNeighbor
+            {
+                AxialCordinate = new Vector2(+1,0),
+                name = "SE"
+            },
+            new HexTileNeighbor
+            {
+            AxialCordinate = new Vector2(+1,-1),
+            name = "NE"
+            }
         };
 
         for (int i = 0; i < axialDirectionVectors.Length; i++)
         {
-            var neighborCoordinate = new Vector2(location.x + axialDirectionVectors[i].x,
-                location.y + axialDirectionVectors[i].y);
+            var neighborCoordinate = new HexTileNeighbor
+            {
+                AxialCordinate = new Vector2(location.x + axialDirectionVectors[i].AxialCordinate.x,
+                location.y + axialDirectionVectors[i].AxialCordinate.y),
+                name = axialDirectionVectors[i].name
+            };
             axialNeighbors.Add(neighborCoordinate);
         }
 
