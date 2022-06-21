@@ -11,8 +11,6 @@ public class GridManager : MonoBehaviour
     [SerializeReference] private Vector2 _canvasSize;
     [SerializeReference] private GameObject _hexagonPrefab; //TODO transfer this GameManager
 
-    public List<Hex> HexGrid = new List<Hex>();
-
     [System.Serializable]
     public class Hex
     {
@@ -21,6 +19,7 @@ public class GridManager : MonoBehaviour
         public Vector2 OffsetCoords;
         public float HexagonSize;
         public List<Vector2> Neighbors;
+        public GameObject Hexagon;
     }
 
     // Start is called before the first frame update
@@ -35,8 +34,9 @@ public class GridManager : MonoBehaviour
 
     }
 
-    public void InitializeGrid(Vector2 gridSize)
+    public List<Hex> InitializeGrid(Vector2 gridSize)
     {
+        List<Hex> HexGrid = new List<Hex>();
         // Create & Align grid
         // Store coordinates for future usage
         //----------------------------------------------------
@@ -84,13 +84,13 @@ public class GridManager : MonoBehaviour
                     OffsetCoords = new Vector2(column, row),
                     AxialCoords = OddqToAxialCoordinate(new Vector2(column, row)),
                     HexagonSize = hexagonSize
-                    
+
                 };
 
                 HexGrid.Add(newHex);
             }
 
-
+            
         }
 
         //TODO align all hexes in the middle of canvas !important
@@ -118,6 +118,7 @@ public class GridManager : MonoBehaviour
 
             hex.Neighbors = actualNeighbors; //TEST burayý kontrol et. deep copy mi yapýyor belli deðil
         }
+        return HexGrid;
     }
 
     /// <summary>
@@ -162,7 +163,7 @@ public class GridManager : MonoBehaviour
     }
 
 
-    
+
     List<Color> GenerateRandomColors(int numberOfColors)
     {
         //TODO delete this function. Transfer it to GameManager.cs

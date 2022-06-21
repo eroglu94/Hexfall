@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 public class GameManager : MonoBehaviour
 {
@@ -8,6 +9,8 @@ public class GameManager : MonoBehaviour
     [SerializeReference] private Vector2 _gridSize = new Vector2(8, 9);
     [SerializeReference] private GameObject _hexagonPrefab;
 
+    private GameObject _selectedHexagon;
+    private List<GridManager.Hex> _hexGrid;
 
     private InputManager inputManager;
 
@@ -23,6 +26,16 @@ public class GameManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (Touch.activeFingers.Count == 1)
+        {
+            if (inputManager.Hit != null)
+            {
+                _selectedHexagon = inputManager.Hit;
+                _selectedHexagon.GetComponent<SpriteRenderer>().color = Color.black;
+
+
+            }
+        }
 
     }
 
@@ -36,10 +49,10 @@ public class GameManager : MonoBehaviour
         var gridManager = GetComponent<GridManager>();
 
         // Initialize Grid
-        gridManager.InitializeGrid(_gridSize);
+        _hexGrid = gridManager.InitializeGrid(_gridSize);
 
         //Initialize HexPrefabs
-        InitializeHexes(gridManager.HexGrid, _numberOfColors);
+        InitializeHexes(_hexGrid, _numberOfColors);
 
     }
 
@@ -67,6 +80,15 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    List<GameObject> FindNeighorObjects(List<GridManager.Hex> hexGrid, List<Vector2> neighbors)
+    {
+        var neighborsGameObjects = new List<GameObject>();
+
+        foreach (var neighborVector in neighbors)
+        {
+                neighborsGameObjects.Add();
+        }
+    }
 
     #region Utility
 
