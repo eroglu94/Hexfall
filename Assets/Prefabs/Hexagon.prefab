@@ -98,15 +98,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c532c8a535842fb4886f2b1606d28ee6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Color: {r: 0, g: 0.5372549, b: 0.25490198, a: 1}
-  Hex:
-    Location: {x: 481.42227, y: -655.194}
+  CurrentTile:
+    Id: 71
+    Color: {r: 1, g: 0.20392157, b: 1, a: 1}
+    Location: {x: 612.0273, y: -655.194}
     AxialCoords: {x: 7, y: 5}
     OffsetCoords: {x: 7, y: 8}
     HexagonSize: 85.032814
+    AllNeighbors:
+    - name: N
+      AxialCordinate: {x: 7, y: 4}
+    - name: NW
+      AxialCordinate: {x: 6, y: 5}
     Neighbors:
-    - {x: 7, y: 4}
-    - {x: 6, y: 5}
+    - name: N
+      AxialCordinate: {x: 7, y: 4}
+    - name: NW
+      AxialCordinate: {x: 6, y: 5}
+    Hexagon: {fileID: 0}
 --- !u!60 &6336008084707092883
 PolygonCollider2D:
   m_ObjectHideFlags: 0

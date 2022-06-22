@@ -11,6 +11,7 @@ public class GameManager : MonoBehaviour
     [SerializeReference] private int _numberOfColors = 5;
     [SerializeReference] private Vector2 _gridSize = new Vector2(8, 9);
     [SerializeReference] private GameObject _hexagonPrefab;
+    [SerializeReference] private GameObject _particleEffect;
 
     private GameObject _selectedHexagon;
     private List<GridManager.HexTile> _hexTiles;
@@ -39,13 +40,21 @@ public class GameManager : MonoBehaviour
         if (Touch.activeFingers.Count == 1 && activeTouch.phase == TouchPhase.Ended && !_isRotating)
         {
             _selectedHexagon = im.Hit;
-            AlignSelectionImage(_selectedHexagon.GetComponent<Hexagon>());
+
+            if (_selectedHexagon)
+            {
+                AlignSelectionImage(_selectedHexagon.GetComponent<Hexagon>());
+
+
+                //SpawnDestroyParticles(_selectedHexagon.GetComponent<Hexagon>());
+                //Destroy(_selectedHexagon);
+            }
 
         }
 
         try
         {
-            _selectedHexagon.GetComponent<SpriteRenderer>().color = Color.black;
+            //_selectedHexagon.GetComponent<SpriteRenderer>().color = Color.black;
 
         }
         catch (Exception e)
@@ -74,15 +83,18 @@ public class GameManager : MonoBehaviour
             // Swipe iþlemi oldu demektir.
             // Down Swipe
             // RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
-
-            _isRotating = true;
-            RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
-
-            if (_selectedHexagon.transform.rotation.eulerAngles.z >= 120)
+            if (_selectedHexagon)
             {
-                _isRotating = false;
-                ManualRotationSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>(), 120);
-                UpdateGrid();
+
+                _isRotating = true;
+                RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
+
+                if (_selectedHexagon.transform.rotation.eulerAngles.z >= 120)
+                {
+                    _isRotating = false;
+                    ManualRotationSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>(), 120);
+                    UpdateGrid();
+                }
             }
         }
 
@@ -239,6 +251,18 @@ public class GameManager : MonoBehaviour
         return new List<Hexagon>();
     }
 
+    void SpawnDestroyParticles(Hexagon destroyedHexagon)
+    {
+        var spawnPosition = new Vector3(destroyedHexagon.transform.localPosition.x,
+            destroyedHexagon.transform.localPosition.y, -20);
+
+        GameObject particle = Instantiate(_particleEffect, spawnPosition, Quaternion.identity);
+        //particle.transform.localScale = Vector2.one * destroyedHexagon.CurrentTile.HexagonSize;
+        var settings = particle.GetComponent<ParticleSystem>().main;
+        settings.startColor = destroyedHexagon.CurrentTile.Color;
+        particle.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
+
+    }
 
     void RotateSelectedHexagons(Hexagon selectedHexagon)
     {

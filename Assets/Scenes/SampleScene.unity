@@ -1236,6 +1236,7 @@ MonoBehaviour:
   _numberOfColors: 5
   _gridSize: {x: 8, y: 9}
   _hexagonPrefab: {fileID: 558143541093072352, guid: beff3f323d34efa4594f2d4e0680aa7a, type: 3}
+  _particleEffect: {fileID: 3464870352636922772, guid: ebe506f36f90de248ae0a85c3ea6f6d5, type: 3}
 --- !u!1 &1415517727
 GameObject:
   m_ObjectHideFlags: 0
@@ -1593,7 +1594,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.41509432, g: 0.41509432, b: 0.41509432, a: 1}
+  m_Color: {r: 0.1792453, g: 0.1792453, b: 0.1792453, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -1622,6 +1623,22 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 0}
+      propertyPath: InitialModule.startLifetime.scalar
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 0.18098079
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 0.18098079
+      objectReference: {fileID: 0}
+    - target: {fileID: 0}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.7830189
+      objectReference: {fileID: 0}
     - target: {fileID: 558143541093072352, guid: beff3f323d34efa4594f2d4e0680aa7a, type: 3}
       propertyPath: m_Name
       value: Hexagon
@@ -1674,5 +1691,7 @@ PrefabInstance:
       propertyPath: m_AutoTiling
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 0}
+    - {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: beff3f323d34efa4594f2d4e0680aa7a, type: 3}
