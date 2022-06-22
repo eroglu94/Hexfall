@@ -20,6 +20,7 @@ public class GameManager : MonoBehaviour
     private InputManager im;
 
     private bool _isRotating;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -99,6 +100,12 @@ public class GameManager : MonoBehaviour
         }
 
 
+        if (!_isRotating)
+        {
+            CheckGame();
+        }
+
+
     }
 
     void StartGame()
@@ -125,13 +132,34 @@ public class GameManager : MonoBehaviour
 
     void InitializeHexes(int numberOfColors)
     {
+        // First, create HexTiles and check for and available score. We don't want player to get score at the beginning. It is not fair :/
+        // Initialize Hexes according to hexgrid data.
+        // ----------------------------------------------
+        var initialScore = true;
+        while (initialScore)
+        {
+
+            foreach (var hexTile in _hexTiles)
+            {
+                hexTile.Color = PickRandomColor(numberOfColors);
+            }
+            var scoreList = CheckForScore();
+            if (scoreList.Count == 0)
+            {
+                initialScore = false;
+
+            }
+        }
+
+
         // Initialize Hexes according to hexgrid data.
         _hexObjects = new List<GameObject>();
         foreach (var hexTile in _hexTiles)
         {
             // Set Properties of temporary HexTile Prefab
-            hexTile.Color = PickRandomColor(numberOfColors);
+            //hexTile.Color = PickRandomColor(numberOfColors);
             _hexagonPrefab.GetComponent<Hexagon>().CurrentTile = hexTile;
+
             //----------------------------
 
             // Instantiate and spawn inital hexes
@@ -148,6 +176,52 @@ public class GameManager : MonoBehaviour
 
     void CheckGame()
     {
+        // This will check 
+
+        CheckForScore();
+    }
+
+    List<GridManager.HexTile> CheckForScore()
+    {
+        // This will check the Hexagon Grid for possible same color grouping.
+        //  If yes then it will return the gameobjects
+
+        foreach (var hexTile in _hexTiles)
+        {
+            var colorHash = hexTile.Color.GetHashCode();
+            var sameColorNeighbors = new List<GridManager.HexTile>();
+            //sameColorNeighbors.Add(hexTile); //Add self tile first.
+            var scoreNeighbors = new List<GridManager.HexTile>();
+
+            foreach (var hexTileNeighbor in FindNeighborHexTiles(hexTile.AllNeighbors))
+            {
+                if (hexTileNeighbor.Color.GetHashCode() == colorHash)
+                {
+                    sameColorNeighbors.Add(hexTileNeighbor);
+                }
+            }
+
+            foreach (var sameColorNeighbor in sameColorNeighbors)
+            {
+                foreach (var thirdNeighbor in sameColorNeighbors)
+                {
+                    if (sameColorNeighbor.AllNeighbors.Exists(x=>x.AxialCordinate == thirdNeighbor.AxialCoords))
+                    {
+                        scoreNeighbors.Add(hexTile);
+                        scoreNeighbors.Add(sameColorNeighbor);
+                        scoreNeighbors.Add(thirdNeighbor);
+                        return scoreNeighbors;
+                    }
+                }
+            }
+            //if (sameColorNeighbors.Count >= 3)
+            //{
+            //    Debug.Log("Possible Scores Count: " + sameColorNeighbors.Count);
+            //    return sameColorNeighbors;
+            //}
+        }
+
+        return new List<GridManager.HexTile>();
 
     }
 
@@ -199,6 +273,20 @@ public class GameManager : MonoBehaviour
             var element = _hexTiles.Find(x => x.AxialCoords == neighbor.AxialCordinate);
 
             neighborGameObjects.Add(element.Hexagon);
+
+        }
+        return neighborGameObjects;
+    }
+
+    List<GridManager.HexTile> FindNeighborHexTiles(List<GridManager.HexTileNeighbor> neighbors)
+    {
+        var neighborGameObjects = new List<GridManager.HexTile>();
+
+        foreach (var neighbor in neighbors)
+        {
+            var element = _hexTiles.Find(x => x.AxialCoords == neighbor.AxialCordinate);
+
+            neighborGameObjects.Add(element);
 
         }
         return neighborGameObjects;
