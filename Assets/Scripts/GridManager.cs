@@ -14,6 +14,8 @@ public class GridManager : MonoBehaviour
     [System.Serializable]
     public class HexTile
     {
+        public int Id;
+        public Color Color;
         public Vector2 Location;
         public Vector2 AxialCoords;
         public Vector2 OffsetCoords;
@@ -21,6 +23,20 @@ public class GridManager : MonoBehaviour
         public List<HexTileNeighbor> AllNeighbors;
         public List<HexTileNeighbor> Neighbors;
         public Hexagon Hexagon;
+
+        public HexTile() { }
+        public HexTile(HexTile copyHexTile)
+        {
+            Id = copyHexTile.Id;
+            Color = copyHexTile.Color;
+            Location = copyHexTile.Location;
+            AxialCoords = copyHexTile.AxialCoords;
+            OffsetCoords = copyHexTile.OffsetCoords;
+            HexagonSize = copyHexTile.HexagonSize;
+            AllNeighbors = copyHexTile.AllNeighbors;
+            Neighbors = copyHexTile.Neighbors;
+            Hexagon = copyHexTile.Hexagon;
+        }
     }
 
     [System.Serializable]
@@ -64,6 +80,7 @@ public class GridManager : MonoBehaviour
         var hexagons = new List<List<GameObject>>(); //Store Hexagons
         Vector2 initialPosition = new Vector2(0, 0); // Initial Positions
         Quaternion rotation = new Quaternion(0, 0, 0, 0);
+        int count = 0;
         for (int row = 0; row < gridSize.y; row++)
         {
             var tempPos = initialPosition;
@@ -91,11 +108,13 @@ public class GridManager : MonoBehaviour
                     Location = tempPos,
                     OffsetCoords = new Vector2(column, row),
                     AxialCoords = OddqToAxialCoordinate(new Vector2(column, row)),
-                    HexagonSize = hexagonSize
+                    HexagonSize = hexagonSize,
+                    Id = count
 
                 };
 
                 hexTiles.Add(newHex);
+                count++;
             }
 
 

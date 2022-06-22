@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 public class GameManager : MonoBehaviour
 {
@@ -11,40 +14,78 @@ public class GameManager : MonoBehaviour
 
     private GameObject _selectedHexagon;
     private List<GridManager.HexTile> _hexTiles;
+    private List<GameObject> _hexObjects;
 
-    private InputManager inputManager;
+    private InputManager im;
 
+    private bool _isRotating;
     // Start is called before the first frame update
     void Start()
     {
-        Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None); // Remove stack trace of Debug.Log messages
+        Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.Full); // Remove stack trace of Debug.Log messages
 
         StartGame();
-        inputManager = InputManager.Instance;
+        im = InputManager.Instance;
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (Touch.activeFingers.Count == 1)
+
+        var activeTouch = im.activeTouch;
+
+
+        // Finger up
+        if (Touch.activeFingers.Count == 1 && activeTouch.phase == TouchPhase.Ended && !_isRotating)
         {
-            if (inputManager.Hit != null)
+            _selectedHexagon = im.Hit;
+            AlignSelectionImage(_selectedHexagon.GetComponent<Hexagon>());
+
+        }
+
+        try
+        {
+            _selectedHexagon.GetComponent<SpriteRenderer>().color = Color.black;
+
+        }
+        catch (Exception e)
+        {
+
+        }
+
+        //if ((Touch.activeFingers.Count == 1 && activeTouch.startScreenPosition.y - 10 > activeTouch.screenPosition.y) || _isRotating)
+        //{
+        //    // Swipe iþlemi oldu demektir.
+        //    // Down Swipe
+        //    // RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
+
+        //    _isRotating = true;
+        //    RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
+
+        //    if (_selectedHexagon.transform.rotation.eulerAngles.z >= 115)
+        //    {
+        //        _isRotating = false;
+        //        ManualRotationSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>(), 120);
+        //    }
+        //}
+
+        if ((Touch.activeFingers.Count == 1 && activeTouch.startScreenPosition.y + 10 < activeTouch.screenPosition.y) || _isRotating)
+        {
+            // Swipe iþlemi oldu demektir.
+            // Down Swipe
+            // RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
+
+            _isRotating = true;
+            RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
+
+            if (_selectedHexagon.transform.rotation.eulerAngles.z >= 120)
             {
-                _selectedHexagon = inputManager.Hit;
-                //_selectedHexagon.GetComponent<Hexagon>().Color = Color.black;
-
-                ////Find Neigbors and select them
-                //var neighbors = FindNeighborObjects(_selectedHexagon.GetComponent<Hexagon>().CurrentTile.Neighbors);
-
-                //foreach (var element in neighbors)
-                //{
-                //    element.Color = Color.black;
-                //}
-
-                AlignSelectionImage(_selectedHexagon.GetComponent<Hexagon>());
-
+                _isRotating = false;
+                ManualRotationSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>(), 120);
+                UpdateGrid();
             }
         }
+
 
     }
 
@@ -73,10 +114,11 @@ public class GameManager : MonoBehaviour
     void InitializeHexes(int numberOfColors)
     {
         // Initialize Hexes according to hexgrid data.
+        _hexObjects = new List<GameObject>();
         foreach (var hexTile in _hexTiles)
         {
             // Set Properties of temporary HexTile Prefab
-            _hexagonPrefab.GetComponent<Hexagon>().Color = PickRandomColor(numberOfColors);
+            hexTile.Color = PickRandomColor(numberOfColors);
             _hexagonPrefab.GetComponent<Hexagon>().CurrentTile = hexTile;
             //----------------------------
 
@@ -87,10 +129,56 @@ public class GameManager : MonoBehaviour
             //---------------------------------
 
             hexTile.Hexagon = hexGameObject.GetComponent<Hexagon>();
+            hexGameObject.GetComponent<Hexagon>().UpdateSelf();
+            _hexObjects.Add(hexGameObject);
         }
     }
 
-    List<Hexagon> FindNeighborObjects(List<GridManager.HexTileNeighbor> neighbors)
+    void CheckGame()
+    {
+
+    }
+
+    void UpdateGrid(string swipeDirection = "up")
+    {
+        // This function will update grid after each rotation animation of selected hexagons are complete.
+        // "up" & "down" swipe
+
+        // current          --> second neigbor
+        // second           --> first neigbor
+        // first neigbor   --> current
+
+
+        var current = _selectedHexagon.GetComponent<Hexagon>();
+        var firstN = FindNeighborHexagons(current.CurrentTile.Neighbors)[0];
+        var secondN = FindNeighborHexagons(current.CurrentTile.Neighbors)[1];
+
+
+        var tmp = new GameObject().AddComponent<Hexagon>();
+        tmp.CurrentTile = current.CurrentTile;
+        //current = firstN;
+        //firstN = secondN;
+        //secondN = tmp;
+
+        // ReArrange _hexGameObject list
+
+        current.Switch(new GridManager.HexTile(firstN.CurrentTile));
+        firstN.Switch(new GridManager.HexTile(secondN.CurrentTile));
+        secondN.Switch(new GridManager.HexTile(tmp.CurrentTile));
+
+
+        //Change _selectedHexagon to new one
+        _selectedHexagon = secondN.gameObject;
+
+        // Update hexTiles
+        _hexTiles = new List<GridManager.HexTile>();
+        foreach (var hexObject in _hexObjects)
+        {
+            _hexTiles.Add(hexObject.GetComponent<Hexagon>().CurrentTile);
+        }
+    }
+
+    List<Hexagon> FindNeighborHexagons(List<GridManager.HexTileNeighbor> neighbors)
     {
         var neighborGameObjects = new List<Hexagon>();
 
@@ -102,6 +190,19 @@ public class GameManager : MonoBehaviour
 
         }
         return neighborGameObjects;
+    }
+
+    GameObject FindHexObj(Vector2 axialCoord)
+    {
+        foreach (var hexObject in _hexObjects)
+        {
+            if (axialCoord == hexObject.GetComponent<Hexagon>().CurrentTile.AxialCoords)
+            {
+                return hexObject;
+            }
+        }
+
+        return null;
     }
 
     List<Hexagon> FindNeighborObjects2(List<GridManager.HexTileNeighbor> neighbors)
@@ -139,6 +240,60 @@ public class GameManager : MonoBehaviour
     }
 
 
+    void RotateSelectedHexagons(Hexagon selectedHexagon)
+    {
+        var selectionImage = GameObject.FindGameObjectWithTag("Selection");
+        var neighborHexagons = FindNeighborHexagons(selectedHexagon.CurrentTile.Neighbors);
+
+        var rotatingObjects = new List<GameObject>();
+        rotatingObjects.Add(selectionImage);
+        rotatingObjects.Add(selectedHexagon.gameObject);
+        rotatingObjects.Add(neighborHexagons[0].gameObject);
+        rotatingObjects.Add(neighborHexagons[1].gameObject);
+
+
+        // Spin the object around the target at 20 degrees/second.
+        //transform.RotateAround(this.transform.position, Vector3.forward, 20 * Time.deltaTime);
+        //transform.RotateAround(new Vector3(30,30), Vector3.forward, 20 * Time.deltaTime);
+
+        // Transform around middle position, selected image position is our middle position since we calculated it before.
+        foreach (var obj in rotatingObjects)
+        {
+            //transform.RotateAround(Camera.main.ScreenToWorldPoint(selectionImage.transform.position), Vector3.forward, 5 * Time.deltaTime);
+
+            //obj.transform.RotateAround(Camera.main.ScreenToWorldPoint(selectionImage.transform.position), Vector3.forward, 5 * Time.deltaTime);
+            obj.transform.RotateAround(selectionImage.transform.position, Vector3.forward, 360 * Time.deltaTime);
+        }
+    }
+
+    void ManualRotationSelectedHexagons(Hexagon selectedHexagon, int angle)
+    {
+        var selectionImage = GameObject.FindGameObjectWithTag("Selection");
+        var neighborHexagons = FindNeighborHexagons(selectedHexagon.CurrentTile.Neighbors);
+
+        var rotatingObjects = new List<GameObject>();
+        //rotatingObjects.Add(selectionImage);
+        rotatingObjects.Add(selectedHexagon.gameObject);
+        rotatingObjects.Add(neighborHexagons[0].gameObject);
+        rotatingObjects.Add(neighborHexagons[1].gameObject);
+
+
+        // Spin the object around the target at 20 degrees/second.
+        //transform.RotateAround(this.transform.position, Vector3.forward, 20 * Time.deltaTime);
+        //transform.RotateAround(new Vector3(30,30), Vector3.forward, 20 * Time.deltaTime);
+
+        // Transform around middle position, selected image position is our middle position since we calculated it before.
+        foreach (var obj in rotatingObjects)
+        {
+            //transform.RotateAround(Camera.main.ScreenToWorldPoint(selectionImage.transform.position), Vector3.forward, 5 * Time.deltaTime);
+
+            //obj.transform.RotateAround(Camera.main.ScreenToWorldPoint(selectionImage.transform.position), Vector3.forward, 5 * Time.deltaTime);
+            obj.transform.eulerAngles = new Vector3(0, 0, angle);
+        }
+
+        var defaultAngle = selectionImage.GetComponent<SelectionImage>().defaultAngle;
+        selectionImage.transform.localRotation = Quaternion.Euler(0, 0, angle + defaultAngle);
+    }
 
     #region Selection
 
@@ -150,14 +305,14 @@ public class GameManager : MonoBehaviour
 
 
         // Find neighbor objects and calculate the center Point
-        var neigbors = FindNeighborObjects(hexagon.CurrentTile.Neighbors);
+        var neigbors = FindNeighborHexagons(hexagon.CurrentTile.Neighbors);
 
         var p1 = hexagon.CurrentTile.Location;
         var p2 = neigbors[0].CurrentTile.Location;
         var p3 = neigbors[1].CurrentTile.Location;
 
         var centerPoint = new Vector2((p1.x + p2.x + p3.x) / 3, (p1.y + p2.y + p3.y) / 3);
-        GameObject.FindGameObjectWithTag("Selection").transform.localPosition = centerPoint;
+        GameObject.FindGameObjectWithTag("Selection").transform.localPosition = new Vector3(centerPoint.x, centerPoint.y, -10);
         //--------------------------------------------------------
 
         // Find order of neighbors and rotate the selection image
@@ -191,7 +346,7 @@ public class GameManager : MonoBehaviour
         }
 
         GameObject.FindGameObjectWithTag("Selection").transform.localRotation = new Quaternion(0, 0, angle, 0);
-
+        GameObject.FindGameObjectWithTag("Selection").GetComponent<SelectionImage>().defaultAngle = angle;
 
 
     }
