@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Numerics;
 using UnityEngine;
+using Color = UnityEngine.Color;
 using Quaternion = UnityEngine.Quaternion;
 using Random = UnityEngine.Random;
 using Vector2 = UnityEngine.Vector2;
@@ -120,7 +122,24 @@ public class GridManager : MonoBehaviour
 
         }
 
-        //TODO align all hexes in the middle of canvas !important
+        //Align all hexes in the middle
+        var coordinates = new List<Vector2>();
+        foreach (var hexTile in hexTiles)
+        {
+            coordinates.Add(hexTile.Location);
+        }
+        var objRectangle = BaundaryOfCoordinates(coordinates);
+
+        var leftMargin = (canvasWidthHeight.x - objRectangle.Width) / 2;
+        var topMargin = (canvasWidthHeight.y - objRectangle.Height) / 2;
+        topMargin = 0; // We won't use topMargin at the moment
+        
+        foreach (var hexTile in hexTiles)
+        {
+            hexTile.Location = new Vector2(hexTile.Location.x + leftMargin, hexTile.Location.y);
+        }
+        //-------------------------------------------------------------
+
 
         // find available neighbors of all hexes
         foreach (var hex in hexTiles)
@@ -253,7 +272,46 @@ public class GridManager : MonoBehaviour
     }
 
 
+    #region Utility
 
+    Rectangle BaundaryOfCoordinates(List<Vector2> tiles)
+    {
+        //starting point is set high
+        float xleft = 10000;
+        float xright = -10000;
+        float yTop = -10000;
+        float ybottom = 10000;
+
+        for (int i = 0; i < tiles.Count; i++)
+        {
+            //find the most left
+            if (tiles[i].x < xleft)
+            {
+                xleft = tiles[i].x;
+            }
+
+            //find the most right
+            if (tiles[i].x > xright)
+            {
+                xright = tiles[i].x;
+            }
+            //find the top
+            if (tiles[i].y > yTop)
+            {
+                yTop = tiles[i].y;
+            }
+            //find the bottom
+            if (tiles[i].y < ybottom)
+            {
+                ybottom = tiles[i].y;
+            }
+        }
+
+
+        return new Rectangle(Convert.ToInt32(xleft), Convert.ToInt32(yTop), Convert.ToInt32(xright - xleft), Convert.ToInt32(yTop - ybottom));
+    }
+
+    #endregion
     List<Color> GenerateRandomColors(int numberOfColors)
     {
         //TODO delete this function. Transfer it to GameManager.cs
