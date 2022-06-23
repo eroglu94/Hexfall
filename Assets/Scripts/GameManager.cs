@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Dynamic;
+using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
 using Random = UnityEngine.Random;
 using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
@@ -22,7 +25,9 @@ public class GameManager : MonoBehaviour
 
     private bool _isRotating;
     private bool _isSpawning;
+    private bool _isFilling;
     private bool _isDestroying;
+    private bool _isHexesMoving;
 
     // Start is called before the first frame update
     void Start()
@@ -105,6 +110,7 @@ public class GameManager : MonoBehaviour
 
         if (!_isRotating)
         {
+            StartCoroutine(IsHexesMoving());
             StartCoroutine(CheckGame());
         }
 
@@ -184,7 +190,7 @@ public class GameManager : MonoBehaviour
 
         //Check For Score
         var scoreHexagons = CheckForScore();
-        if (scoreHexagons.Count != 0 && !_isSpawning)
+        if (scoreHexagons.Count != 0 && !_isSpawning && !_isHexesMoving)
         {
             // Destroy the hexagons
             // Increment score, move count
@@ -200,33 +206,46 @@ public class GameManager : MonoBehaviour
             }
             _isDestroying = false;
             _isSpawning = true;
+
         }
         //----------------------------------------------
 
 
-        //Spawn Missing Hexagons
-        var spawnedHexagons = SpawnMissingHexagons();
-        if (spawnedHexagons.Count != 0 && !_isDestroying)
+
+        if (!_isDestroying && _isSpawning && !_isHexesMoving)
         {
-            
-            //Slide down the new hexagons to their place.
-            _isSpawning = true;
-            foreach (var spawnedHexagon in spawnedHexagons)
+            if (!_isFilling)
             {
-                var step = 1f * Time.deltaTime; // calculate distance to move
-                var position = spawnedHexagon.Hexagon.gameObject.transform.localPosition;
-                var targetPosition = spawnedHexagon.Location;
-                StartCoroutine(MoveToPosition(spawnedHexagon.Hexagon.transform, targetPosition, 1f));
-
+                FillEmptyPlaces();
             }
-
-            //if (Vector3.Distance(position, targetPosition) < 0.001f)
-            //{
-            //    _isSpawning = false;
-            //}
-
+            SpawnMissingHexagons();
+            _isSpawning = false;
         }
-        //-----------------------------------------
+
+
+        ////Spawn Missing Hexagons
+        //var spawnedHexagons = SpawnMissingHexagons();
+        //if (spawnedHexagons.Count != 0 && !_isDestroying)
+        //{
+
+        //    //Slide down the new hexagons to their place.
+        //    _isSpawning = true;
+        //    foreach (var spawnedHexagon in spawnedHexagons)
+        //    {
+        //        var step = 1f * Time.deltaTime; // calculate distance to move
+        //        var position = spawnedHexagon.Hexagon.gameObject.transform.localPosition;
+        //        var targetPosition = spawnedHexagon.Location;
+        //        StartCoroutine(MoveToPosition(spawnedHexagon.Hexagon.transform, targetPosition, 1f));
+
+        //    }
+
+        //    //if (Vector3.Distance(position, targetPosition) < 0.001f)
+        //    //{
+        //    //    _isSpawning = false;
+        //    //}
+
+        //}
+        ////-----------------------------------------
 
         yield return new WaitForSeconds(0.1f);
     }
@@ -245,12 +264,109 @@ public class GameManager : MonoBehaviour
                 hexTile.IsDestroyed = false;
                 var position = hexTile.Location;
                 hexTile.Hexagon.gameObject.transform.localPosition = new Vector3(position.x, 70); // Spawn at 70pixel above the parent canvas
-
+                hexTile.Hexagon.UpdateSelfWithTransition();
                 spawnedHexagons.Add(hexTile);
             }
         }
 
+        _isFilling = false;
         return spawnedHexagons;
+    }
+
+    public void FillEmptyPlaces()
+    {
+
+        // Iterate destroyed hexagons.
+        // Shift down remaining hexes in that column.
+        // Change hextiles of destroyed hexagon to empty spaces
+        // -----------------------------------------------------------------
+
+        var destroyedHexagons = _hexTiles.FindAll(x => x.IsDestroyed);
+        if (destroyedHexagons.Count == 0)
+            return;
+
+        _isFilling = true;
+
+        var tmpHexTiles = new List<GridManager.HexTile>(); // We will make soft copy of hexTiles because we will lose information about empty cells after shifting.
+        foreach (var hexTile in _hexTiles)
+        {
+            tmpHexTiles.Add(new GridManager.HexTile(hexTile));
+        }
+
+        List<int> freeColumns = new List<int>(); // Ex: 1,1,2   or   1,1,1,2,2,3
+
+        foreach (var destroyedHexagon in destroyedHexagons)
+        {
+
+            var column = Convert.ToInt32(destroyedHexagon.OffsetCoords.x);
+            var row = Convert.ToInt32(destroyedHexagon.OffsetCoords.y);
+            freeColumns.Add(column);
+            //GridManager.HexTile firstRowHexTile = new GridManager.HexTile(_hexTiles.Find(x => x.AxialCoords == new Vector2(column, 0)));
+
+            foreach (var hexTile in _hexTiles)
+            {
+                // Shift all upper hexes by 1 hex. Same Column & smaller row index => upper hexes
+                if (Convert.ToInt32(hexTile.OffsetCoords.x) == column && Convert.ToInt32(hexTile.OffsetCoords.y) < row)
+                {
+
+                    var newOffsetCoord = hexTile.OffsetCoords + new Vector2(0, +1); // To send it 1 hex below. Ex: 0,0 => 0,1
+
+                    //Find newOffsetCoord in hextile and swap them
+                    var oneHexTileBelow = new GridManager.HexTile(_hexTiles.Find(x => x.OffsetCoords == newOffsetCoord));
+                    hexTile.Hexagon.Shift(oneHexTileBelow);
+                    if (!hexTile.IsDestroyed)
+                    {
+                        hexTile.Hexagon.UpdateSelfWithTransition();
+                    }
+                }
+            }
+        }
+
+        // freeColumns and destroyed hexagons count should be same practically
+        // assign their hextiles to one the empty cells but do not move them to empty places
+        List<int> placedColumns = new List<int>();
+        for (int i = 0; i < freeColumns.Count; i++)
+        {
+            var placedCount = placedColumns.Count(x => x == freeColumns[i]);
+            var placeTile = new GridManager.HexTile(tmpHexTiles.Find(x => x.OffsetCoords == new Vector2(freeColumns[i], placedCount)));
+            placeTile.Hexagon = destroyedHexagons[i].Hexagon;
+            placeTile.IsDestroyed = true;
+            destroyedHexagons[i].Hexagon.Switch(placeTile, true, false);
+
+            placedColumns.Add(freeColumns[i]);
+        }
+
+        UpdateHexTiles();
+    }
+
+    public void FillEmptyPlaces2()
+    {
+        // Move the columns to down to fill the empty places
+        // Iterate destorey hexagons. Shift remaining hexes in that column.
+
+
+        var destroyedHexagons = _hexObjects.FindAll(x => x.GetComponent<Hexagon>().CurrentTile.IsDestroyed);
+
+        foreach (var destroyedHexagon in destroyedHexagons)
+        {
+            var column = destroyedHexagon.GetComponent<Hexagon>().CurrentTile.OffsetCoords.x;
+            var row = destroyedHexagon.GetComponent<Hexagon>().CurrentTile.OffsetCoords.y;
+
+            foreach (var hexObject in _hexObjects)
+            {
+                if (hexObject.GetComponent<Hexagon>().CurrentTile.OffsetCoords.x == column && hexObject.GetComponent<Hexagon>().CurrentTile.OffsetCoords.y < row)
+                {
+
+                }
+            }
+
+        }
+
+
+
+
+
+
     }
 
     List<GridManager.HexTile> CheckForScore()
@@ -297,6 +413,62 @@ public class GameManager : MonoBehaviour
 
     }
 
+    IEnumerator IsHexesMoving()
+    {
+        var p1 = new List<Vector3>();
+        foreach (var hexTile in _hexTiles)
+        {
+            try
+            {
+                p1.Add(hexTile.Hexagon.gameObject.transform.localPosition);
+            }
+            catch (Exception e)
+            {
+                
+            }
+        }
+
+        yield return new WaitForSeconds(0.2f);
+
+        var p2 = new List<Vector3>();
+        foreach (var hexTile in _hexTiles)
+        {
+            try
+            {
+                p2.Add(hexTile.Hexagon.gameObject.transform.localPosition);
+            }
+            catch (Exception e)
+            {
+            }
+        }
+
+        bool anyDiffer = false;
+        for (int i = 0; i < p1.Count; i++)
+        {
+            if (p1[i] != p2[i])
+            {
+                try
+                {
+                    anyDiffer = true;
+                }
+                catch (Exception e)
+                {
+                }
+            }
+        }
+
+        if (anyDiffer)
+        {
+            _isHexesMoving = true;
+
+        }
+        else
+        {
+            _isHexesMoving = false;
+
+        }
+    }
+
     void UpdateGrid(string swipeDirection = "up")
     {
         // This function will update grid after each rotation animation of selected hexagons are complete.
@@ -320,20 +492,42 @@ public class GameManager : MonoBehaviour
 
         // ReArrange _hexGameObject list
 
-        current.Switch(new GridManager.HexTile(firstN.CurrentTile));
-        firstN.Switch(new GridManager.HexTile(secondN.CurrentTile));
-        secondN.Switch(new GridManager.HexTile(tmp.CurrentTile));
+        if (current.CurrentTile.Neighbors[0].name + current.CurrentTile.Neighbors[1].name=="NNE")
+        {
+            
+            current.Switch(new GridManager.HexTile(secondN.CurrentTile));
+            secondN.Switch(new GridManager.HexTile(firstN.CurrentTile));
+            firstN.Switch(new GridManager.HexTile(tmp.CurrentTile));
+            //Change _selectedHexagon to new one
+            _selectedHexagon = firstN.gameObject;
+        }
+        else
+        {
+            current.Switch(new GridManager.HexTile(firstN.CurrentTile));
+            firstN.Switch(new GridManager.HexTile(secondN.CurrentTile));
+            secondN.Switch(new GridManager.HexTile(tmp.CurrentTile));
+
+            //Change _selectedHexagon to new one
+            _selectedHexagon = secondN.gameObject;
+        }
 
 
-        //Change _selectedHexagon to new one
-        _selectedHexagon = secondN.gameObject;
 
+
+
+        // Update hexTiles
+        UpdateHexTiles();
+    }
+
+    public void UpdateHexTiles()
+    {
         // Update hexTiles
         _hexTiles = new List<GridManager.HexTile>();
         foreach (var hexObject in _hexObjects)
         {
             _hexTiles.Add(hexObject.GetComponent<Hexagon>().CurrentTile);
         }
+        _hexTiles.Sort((x, y) => x.Id.CompareTo(y.Id));
     }
 
     List<Hexagon> FindNeighborHexagons(List<GridManager.HexTileNeighbor> neighbors)
@@ -418,8 +612,18 @@ public class GameManager : MonoBehaviour
 
         GameObject particle = Instantiate(_particleEffect, spawnPosition, Quaternion.identity);
         //particle.transform.localScale = Vector2.one * destroyedHexagon.CurrentTile.HexagonSize;
+
+        var color1 = destroyedHexagon.CurrentTile.Color;
+        var color2 = new Color(color1.r * 1.5f, color1.g * 1.5f, color1.b * 1.5f);
+
+
         var settings = particle.GetComponent<ParticleSystem>().main;
-        settings.startColor = destroyedHexagon.CurrentTile.Color;
+        var startColor = settings.startColor;
+        //startColor.mode = ParticleSystemGradientMode.TwoColors;
+        //startColor.colorMin = color1;
+        //startColor.colorMax = color2;
+        settings.startColor = new ParticleSystem.MinMaxGradient(color1, color2);
+
         particle.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
 
     }
