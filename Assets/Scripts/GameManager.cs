@@ -13,6 +13,7 @@ public class GameManager : MonoBehaviour
 {
     [SerializeReference] private int _numberOfColors = 5;
     [SerializeReference] private Vector2 _gridSize = new Vector2(8, 9);
+    [SerializeReference] private int _scorePerHexagon = 5;
     [SerializeReference] private GameObject _hexagonPrefab;
     [SerializeReference] private GameObject _particleEffect;
 
@@ -103,6 +104,7 @@ public class GameManager : MonoBehaviour
                     _isRotating = false;
                     ManualRotationSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>(), 120);
                     UpdateGrid();
+                    IncrementMoveCount();
                 }
             }
         }
@@ -201,8 +203,7 @@ public class GameManager : MonoBehaviour
                 //Destroy(scoreHexagon.Hexagon.gameObject);
                 scoreHexagon.Hexagon.gameObject.transform.localPosition = new Vector3(-1000, -1000);
                 scoreHexagon.IsDestroyed = true;
-
-
+                IncrementScore(_scorePerHexagon);
             }
             _isDestroying = false;
             _isSpawning = true;
@@ -249,7 +250,6 @@ public class GameManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.1f);
     }
-
 
     List<GridManager.HexTile> SpawnMissingHexagons()
     {
@@ -424,7 +424,7 @@ public class GameManager : MonoBehaviour
             }
             catch (Exception e)
             {
-                
+
             }
         }
 
@@ -465,7 +465,6 @@ public class GameManager : MonoBehaviour
         else
         {
             _isHexesMoving = false;
-
         }
     }
 
@@ -484,20 +483,23 @@ public class GameManager : MonoBehaviour
         var secondN = FindNeighborHexagons(current.CurrentTile.Neighbors)[1];
 
 
-        var tmp = new GameObject().AddComponent<Hexagon>();
-        tmp.CurrentTile = current.CurrentTile;
+        //var tmp = new GameObject().AddComponent<Hexagon>();
+        //tmp.CurrentTile = current.CurrentTile;
+
+        var tmpTile = new GridManager.HexTile(current.CurrentTile);
+
         //current = firstN;
         //firstN = secondN;
         //secondN = tmp;
 
         // ReArrange _hexGameObject list
 
-        if (current.CurrentTile.Neighbors[0].name + current.CurrentTile.Neighbors[1].name=="NNE")
+        if (current.CurrentTile.Neighbors[0].name + current.CurrentTile.Neighbors[1].name == "NNE")
         {
-            
+
             current.Switch(new GridManager.HexTile(secondN.CurrentTile));
             secondN.Switch(new GridManager.HexTile(firstN.CurrentTile));
-            firstN.Switch(new GridManager.HexTile(tmp.CurrentTile));
+            firstN.Switch(new GridManager.HexTile(tmpTile));
             //Change _selectedHexagon to new one
             _selectedHexagon = firstN.gameObject;
         }
@@ -505,14 +507,11 @@ public class GameManager : MonoBehaviour
         {
             current.Switch(new GridManager.HexTile(firstN.CurrentTile));
             firstN.Switch(new GridManager.HexTile(secondN.CurrentTile));
-            secondN.Switch(new GridManager.HexTile(tmp.CurrentTile));
+            secondN.Switch(new GridManager.HexTile(tmpTile));
 
             //Change _selectedHexagon to new one
             _selectedHexagon = secondN.gameObject;
         }
-
-
-
 
 
         // Update hexTiles
@@ -681,6 +680,23 @@ public class GameManager : MonoBehaviour
 
         var defaultAngle = selectionImage.GetComponent<SelectionImage>().defaultAngle;
         selectionImage.transform.localRotation = Quaternion.Euler(0, 0, angle + defaultAngle);
+    }
+
+    void IncrementMoveCount()
+    {
+
+        var txtobj = GameObject.Find("txtMoveCount").GetComponent<TMPro.TextMeshProUGUI>();
+        var moveCount = Convert.ToInt32(txtobj.text);
+        moveCount++;
+        txtobj.text = moveCount.ToString();
+    }
+
+    void IncrementScore(int score)
+    {
+        var txtobj = GameObject.Find("txtScore").GetComponent<TMPro.TextMeshProUGUI>();
+        var scoreCount = Convert.ToInt32(txtobj.text);
+        scoreCount += score;
+        txtobj.text = scoreCount.ToString();
     }
 
     #region Selection
