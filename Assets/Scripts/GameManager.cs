@@ -25,6 +25,7 @@ public class GameManager : MonoBehaviour
 
 
     private bool _isRotating;
+    private int _rotateCount;
     private bool _isSpawning;
     private bool _isFilling;
     private bool _isDestroying;
@@ -92,19 +93,41 @@ public class GameManager : MonoBehaviour
         {
             // Swipe iþlemi oldu demektir.
             // Down Swipe
-            // RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
+            // Reset rotateCount
+            //---------------------------
+            if (!_isRotating)
+            {
+                _rotateCount = 0;
+            }
+
+
             if (_selectedHexagon)
             {
-
+                //_rotateCount = 0;
+                RotateAgain:
                 _isRotating = true;
                 RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
 
                 if (_selectedHexagon.transform.rotation.eulerAngles.z >= 120)
                 {
+                    // One rotate is complete. Check for score, if no score, rotate one more
+
                     _isRotating = false;
                     ManualRotationSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>(), 120);
                     UpdateGrid();
                     IncrementMoveCount();
+                    if (_rotateCount >= 2)
+                    {
+                        _isRotating = false;
+                    }
+                    else if (CheckForScore().Count == 0 && _rotateCount < 2)
+                    {
+                        // No available explosion/score. Rotate one more
+                        _rotateCount++;
+                        goto RotateAgain;
+                    }
+
+
                 }
             }
         }
@@ -248,7 +271,7 @@ public class GameManager : MonoBehaviour
         //}
         ////-----------------------------------------
 
-        yield return new WaitForSeconds(0.1f);
+        yield return new WaitForSeconds(0.05f);
     }
 
     List<GridManager.HexTile> SpawnMissingHexagons()
@@ -649,7 +672,7 @@ public class GameManager : MonoBehaviour
             //transform.RotateAround(Camera.main.ScreenToWorldPoint(selectionImage.transform.position), Vector3.forward, 5 * Time.deltaTime);
 
             //obj.transform.RotateAround(Camera.main.ScreenToWorldPoint(selectionImage.transform.position), Vector3.forward, 5 * Time.deltaTime);
-            obj.transform.RotateAround(selectionImage.transform.position, Vector3.forward, 360 * Time.deltaTime);
+            obj.transform.RotateAround(selectionImage.transform.position, Vector3.forward, 550 * Time.deltaTime);
         }
     }
 
