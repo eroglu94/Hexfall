@@ -19,7 +19,10 @@ public class GameManager : MonoBehaviour
 
     private InputManager im;
 
+
     private bool _isRotating;
+    private bool _isSpawning;
+    private bool _isDestroying;
 
     // Start is called before the first frame update
     void Start()
@@ -102,7 +105,7 @@ public class GameManager : MonoBehaviour
 
         if (!_isRotating)
         {
-            CheckGame();
+            StartCoroutine(CheckGame());
         }
 
 
@@ -174,11 +177,80 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void CheckGame()
+    IEnumerator CheckGame()
     {
         // This will check 
 
-        CheckForScore();
+
+        //Check For Score
+        var scoreHexagons = CheckForScore();
+        if (scoreHexagons.Count != 0 && !_isSpawning)
+        {
+            // Destroy the hexagons
+            // Increment score, move count
+            _isDestroying = true;
+            foreach (var scoreHexagon in scoreHexagons)
+            {
+                SpawnDestroyParticles(scoreHexagon.Hexagon);
+                //Destroy(scoreHexagon.Hexagon.gameObject);
+                scoreHexagon.Hexagon.gameObject.transform.localPosition = new Vector3(-1000, -1000);
+                scoreHexagon.IsDestroyed = true;
+
+
+            }
+            _isDestroying = false;
+            _isSpawning = true;
+        }
+        //----------------------------------------------
+
+
+        //Spawn Missing Hexagons
+        var spawnedHexagons = SpawnMissingHexagons();
+        if (spawnedHexagons.Count != 0 && !_isDestroying)
+        {
+            
+            //Slide down the new hexagons to their place.
+            _isSpawning = true;
+            foreach (var spawnedHexagon in spawnedHexagons)
+            {
+                var step = 1f * Time.deltaTime; // calculate distance to move
+                var position = spawnedHexagon.Hexagon.gameObject.transform.localPosition;
+                var targetPosition = spawnedHexagon.Location;
+                StartCoroutine(MoveToPosition(spawnedHexagon.Hexagon.transform, targetPosition, 1f));
+
+            }
+
+            //if (Vector3.Distance(position, targetPosition) < 0.001f)
+            //{
+            //    _isSpawning = false;
+            //}
+
+        }
+        //-----------------------------------------
+
+        yield return new WaitForSeconds(0.1f);
+    }
+
+
+    List<GridManager.HexTile> SpawnMissingHexagons()
+    {
+        var spawnedHexagons = new List<GridManager.HexTile>();
+        foreach (var hexTile in _hexTiles)
+        {
+            if (hexTile.IsDestroyed)
+            {
+                //Create new one at top of the screen. At the same line
+                hexTile.Color = PickRandomColor(_numberOfColors);
+                hexTile.Hexagon.UpdateColor();
+                hexTile.IsDestroyed = false;
+                var position = hexTile.Location;
+                hexTile.Hexagon.gameObject.transform.localPosition = new Vector3(position.x, 70); // Spawn at 70pixel above the parent canvas
+
+                spawnedHexagons.Add(hexTile);
+            }
+        }
+
+        return spawnedHexagons;
     }
 
     List<GridManager.HexTile> CheckForScore()
@@ -205,7 +277,7 @@ public class GameManager : MonoBehaviour
             {
                 foreach (var thirdNeighbor in sameColorNeighbors)
                 {
-                    if (sameColorNeighbor.AllNeighbors.Exists(x=>x.AxialCordinate == thirdNeighbor.AxialCoords))
+                    if (sameColorNeighbor.AllNeighbors.Exists(x => x.AxialCordinate == thirdNeighbor.AxialCoords))
                     {
                         scoreNeighbors.Add(hexTile);
                         scoreNeighbors.Add(sameColorNeighbor);
@@ -413,6 +485,7 @@ public class GameManager : MonoBehaviour
     {
         // Find middle point of 2 neighbors and hexagon itself and place selection image at that point
         // Find order of neighbors and rotate the selection image
+        // TODO istediðimiz 3'lüyü alamadýðýmýz durumlar var. bir kere daha týkladýðýnda öbür seçimi almamýz lazým. Örnek apk oyununda öyle yapýlmýþ.
         // -----------------------------------------
 
 
@@ -504,8 +577,6 @@ public class GameManager : MonoBehaviour
 
         return colorList;
     }
-
-
     Color PickRandomColor(int numberOfColors)
     {
 
@@ -536,6 +607,24 @@ public class GameManager : MonoBehaviour
 
         ColorUtility.TryParseHtmlString(indexcolors[Random.Range(0, numberOfColors)], out var tmpColor);
         return tmpColor;
+    }
+
+    IEnumerator MoveToPosition(Transform transform, Vector3 position, float timeToReachTarget, bool isHexMoving = true)
+    {
+        var currentPos = transform.localPosition;
+        var t = 0f;
+        while (t < 1)
+        {
+            t += Time.deltaTime / timeToReachTarget;
+            transform.localPosition = Vector3.Lerp(currentPos, position, t);
+            yield return null;
+        }
+
+        if (isHexMoving)
+        {
+            _isSpawning = false;
+
+        }
     }
 
     #endregion

@@ -37,6 +37,11 @@ public class Hexagon : MonoBehaviour
         this.transform.localRotation = Quaternion.identity;
     }
 
+    public void UpdateColor()
+    {
+        this.GetComponent<SpriteRenderer>().color = CurrentTile.Color;
+    }
+
     public void Switch(Hexagon newHexagon, bool preserveColor = true)
     {
         var colorBefore = CurrentTile.Color;
