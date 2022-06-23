@@ -26,6 +26,7 @@ public class GridManager : MonoBehaviour
         public List<HexTileNeighbor> Neighbors;
         public Hexagon Hexagon;
         public bool IsDestroyed;
+        public bool IsBomb;
 
         public HexTile() { }
         public HexTile(HexTile copyHexTile)
@@ -40,6 +41,7 @@ public class GridManager : MonoBehaviour
             Neighbors = copyHexTile.Neighbors;
             Hexagon = copyHexTile.Hexagon;
             IsDestroyed = copyHexTile.IsDestroyed;
+            IsBomb = copyHexTile.IsBomb;
         }
     }
 

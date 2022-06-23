@@ -98,9 +98,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c532c8a535842fb4886f2b1606d28ee6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  BombObject: {fileID: 5055174596264130400, guid: e87e6ec7eaf263545af91c8516074759, type: 3}
   CurrentTile:
     Id: 71
-    Color: {r: 1, g: 0.20392157, b: 1, a: 1}
+    Color: {r: 0.10980392, g: 0.9019608, b: 1, a: 1}
     Location: {x: 612.0273, y: -655.194}
     AxialCoords: {x: 7, y: 5}
     OffsetCoords: {x: 7, y: 8}
@@ -116,6 +117,8 @@ MonoBehaviour:
     - name: NW
       AxialCordinate: {x: 6, y: 5}
     Hexagon: {fileID: 0}
+    IsDestroyed: 0
+    IsBomb: 0
 --- !u!60 &6336008084707092883
 PolygonCollider2D:
   m_ObjectHideFlags: 0

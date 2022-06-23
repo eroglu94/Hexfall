@@ -14,16 +14,20 @@ public class GameManager : MonoBehaviour
     [SerializeReference] private int _numberOfColors = 5;
     [SerializeReference] private Vector2 _gridSize = new Vector2(8, 9);
     [SerializeReference] private int _scorePerHexagon = 5;
+    [SerializeReference] private int _bombCallScore = 300;
     [SerializeReference] private GameObject _hexagonPrefab;
     [SerializeReference] private GameObject _particleEffect;
 
-    private GameObject _selectedHexagon;
+    //private GameObject _selectedHexagon;
+    private int _selectedHexagon;
     private List<GridManager.HexTile> _hexTiles;
     private List<GameObject> _hexObjects;
 
     private InputManager im;
 
-
+    private int _score = 0;
+    private int _bombScore = 0;
+    private int _moveCount = 0;
     private bool _isRotating;
     private int _rotateCount;
     private bool _isSpawning;
@@ -43,33 +47,46 @@ public class GameManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
+        if (_hexTiles.Count == 0)
+        {
+            return;
+        }
         var activeTouch = im.activeTouch;
+
+
+        //// Reassign Selected Hexagon by finding new object with previous coordinate
+        //// We did this because _selectedHexagon misbehaviour.
+        //// Steps to produce: Selected hexagons will explode, columns will shift down and explode also. When this happens, _selectedHexagon is misheaving.
+        //try
+        //{
+        //    _selectedHexagon = _hexTiles
+        //        .Find(x => x.OffsetCoords == _selectedHexagon.GetComponent<Hexagon>().CurrentTile.OffsetCoords).Hexagon
+        //        .gameObject;
+        //}
+        //catch (Exception e)
+        //{
+        //    Debug.Log(e.Message);
+        //}
+
 
 
         // Finger up
         if (Touch.activeFingers.Count == 1 && activeTouch.phase == TouchPhase.Ended && !_isRotating)
         {
-            _selectedHexagon = im.Hit;
-
-            if (_selectedHexagon)
+            //Check if restart button is triggered
+            if (im.Hit.name == "RestartGame")
             {
-                AlignSelectionImage(_selectedHexagon.GetComponent<Hexagon>());
-
-
-                //SpawnDestroyParticles(_selectedHexagon.GetComponent<Hexagon>());
-                //Destroy(_selectedHexagon);
+                im.Hit = null;
+                RestartGame();
+                return;
             }
 
-        }
+            _selectedHexagon = im.Hit.GetComponent<Hexagon>().CurrentTile.Id;
 
-        try
-        {
-            //_selectedHexagon.GetComponent<SpriteRenderer>().color = Color.black;
-
-        }
-        catch (Exception e)
-        {
+            if (FindHex(_selectedHexagon))
+            {
+                AlignSelectionImage(FindHex(_selectedHexagon));
+            }
 
         }
 
@@ -101,21 +118,27 @@ public class GameManager : MonoBehaviour
             }
 
 
-            if (_selectedHexagon)
+            if (FindHex(_selectedHexagon))
             {
-                //_rotateCount = 0;
-                RotateAgain:
-                _isRotating = true;
-                RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
 
-                if (_selectedHexagon.transform.rotation.eulerAngles.z >= 120)
+            RotateAgain:
+                _isRotating = true;
+                RotateSelectedHexagons(FindHex(_selectedHexagon));
+
+                if (FindHex(_selectedHexagon).transform.rotation.eulerAngles.z >= 120)
                 {
                     // One rotate is complete. Check for score, if no score, rotate one more
 
                     _isRotating = false;
-                    ManualRotationSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>(), 120);
+                    ManualRotationSelectedHexagons(FindHex(_selectedHexagon), 120);
                     UpdateGrid();
-                    IncrementMoveCount();
+                    if (CheckForScore().Count != 0)
+                    {
+
+
+                        IncrementMoveCount();
+                        DecreaseBombTimers();
+                    }
                     if (_rotateCount >= 2)
                     {
                         _isRotating = false;
@@ -161,51 +184,23 @@ public class GameManager : MonoBehaviour
 
     void RestartGame()
     {
-
-    }
-
-    void InitializeHexes(int numberOfColors)
-    {
-        // First, create HexTiles and check for and available score. We don't want player to get score at the beginning. It is not fair :/
-        // Initialize Hexes according to hexgrid data.
-        // ----------------------------------------------
-        var initialScore = true;
-        while (initialScore)
+        // Destroy all previous game objects
+        foreach (var hexObject in _hexObjects)
         {
-
-            foreach (var hexTile in _hexTiles)
-            {
-                hexTile.Color = PickRandomColor(numberOfColors);
-            }
-            var scoreList = CheckForScore();
-            if (scoreList.Count == 0)
-            {
-                initialScore = false;
-
-            }
+            Destroy(hexObject);
         }
 
-
-        // Initialize Hexes according to hexgrid data.
         _hexObjects = new List<GameObject>();
-        foreach (var hexTile in _hexTiles)
-        {
-            // Set Properties of temporary HexTile Prefab
-            //hexTile.Color = PickRandomColor(numberOfColors);
-            _hexagonPrefab.GetComponent<Hexagon>().CurrentTile = hexTile;
+        _hexTiles = new List<GridManager.HexTile>();
 
-            //----------------------------
+        // Reset global variables
+        IncrementScore(0);
+        IncrementMoveCount(0);
+        _score = 0;
+        _moveCount = 0;
+        _bombScore = 0;
 
-            // Instantiate and spawn inital hexes
-            GameObject hexGameObject = Instantiate(_hexagonPrefab, hexTile.Location, Quaternion.identity);
-            hexGameObject.transform.localScale = Vector2.one * hexTile.HexagonSize;
-            hexGameObject.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
-            //---------------------------------
-
-            hexTile.Hexagon = hexGameObject.GetComponent<Hexagon>();
-            hexGameObject.GetComponent<Hexagon>().UpdateSelf();
-            _hexObjects.Add(hexGameObject);
-        }
+        StartGame();
     }
 
     IEnumerator CheckGame()
@@ -225,7 +220,13 @@ public class GameManager : MonoBehaviour
                 SpawnDestroyParticles(scoreHexagon.Hexagon);
                 //Destroy(scoreHexagon.Hexagon.gameObject);
                 scoreHexagon.Hexagon.gameObject.transform.localPosition = new Vector3(-1000, -1000);
+                if (scoreHexagon.IsBomb)
+                {
+                    scoreHexagon.IsBomb = false;
+                    scoreHexagon.Hexagon.Disarm();
+                }
                 scoreHexagon.IsDestroyed = true;
+
                 IncrementScore(_scorePerHexagon);
             }
             _isDestroying = false;
@@ -274,6 +275,51 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSeconds(0.05f);
     }
 
+    void InitializeHexes(int numberOfColors)
+    {
+        // First, create HexTiles and check for and available score. We don't want player to get score at the beginning. It is not fair :/
+        // Initialize Hexes according to hexgrid data.
+        // ----------------------------------------------
+        var initialScore = true;
+        while (initialScore)
+        {
+
+            foreach (var hexTile in _hexTiles)
+            {
+                hexTile.Color = PickRandomColor(numberOfColors);
+            }
+            var scoreList = CheckForScore();
+            if (scoreList.Count == 0)
+            {
+                initialScore = false;
+
+            }
+        }
+
+
+        // Initialize Hexes according to hexgrid data.
+        _hexObjects = new List<GameObject>();
+        foreach (var hexTile in _hexTiles)
+        {
+            // Set Properties of temporary HexTile Prefab
+            //hexTile.Color = PickRandomColor(numberOfColors);
+            _hexagonPrefab.GetComponent<Hexagon>().CurrentTile = hexTile;
+
+            //----------------------------
+
+            // Instantiate and spawn inital hexes
+            GameObject hexGameObject = Instantiate(_hexagonPrefab, hexTile.Location, Quaternion.identity);
+            hexGameObject.transform.localScale = Vector2.one * hexTile.HexagonSize;
+            hexGameObject.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
+            //---------------------------------
+
+            hexTile.Hexagon = hexGameObject.GetComponent<Hexagon>();
+            hexGameObject.GetComponent<Hexagon>().UpdateSelf();
+
+            _hexObjects.Add(hexGameObject);
+        }
+    }
+
     List<GridManager.HexTile> SpawnMissingHexagons()
     {
         var spawnedHexagons = new List<GridManager.HexTile>();
@@ -282,6 +328,12 @@ public class GameManager : MonoBehaviour
             if (hexTile.IsDestroyed)
             {
                 //Create new one at top of the screen. At the same line
+                if (_bombScore >= _bombCallScore)
+                {
+                    _bombScore = _bombScore - _bombCallScore;
+                    hexTile.IsBomb = true;
+                    hexTile.Hexagon.MakeSelfBomb();
+                }
                 hexTile.Color = PickRandomColor(_numberOfColors);
                 hexTile.Hexagon.UpdateColor();
                 hexTile.IsDestroyed = false;
@@ -291,7 +343,7 @@ public class GameManager : MonoBehaviour
                 spawnedHexagons.Add(hexTile);
             }
         }
-
+        UpdateHexTiles();
         _isFilling = false;
         return spawnedHexagons;
     }
@@ -501,7 +553,7 @@ public class GameManager : MonoBehaviour
         // first neigbor   --> current
 
 
-        var current = _selectedHexagon.GetComponent<Hexagon>();
+        var current = FindHex(_selectedHexagon);
         var firstN = FindNeighborHexagons(current.CurrentTile.Neighbors)[0];
         var secondN = FindNeighborHexagons(current.CurrentTile.Neighbors)[1];
 
@@ -524,7 +576,7 @@ public class GameManager : MonoBehaviour
             secondN.Switch(new GridManager.HexTile(firstN.CurrentTile));
             firstN.Switch(new GridManager.HexTile(tmpTile));
             //Change _selectedHexagon to new one
-            _selectedHexagon = firstN.gameObject;
+            _selectedHexagon = firstN.CurrentTile.Id;
         }
         else
         {
@@ -533,7 +585,7 @@ public class GameManager : MonoBehaviour
             secondN.Switch(new GridManager.HexTile(tmpTile));
 
             //Change _selectedHexagon to new one
-            _selectedHexagon = secondN.gameObject;
+            _selectedHexagon = secondN.CurrentTile.Id;
         }
 
 
@@ -587,6 +639,19 @@ public class GameManager : MonoBehaviour
             if (axialCoord == hexObject.GetComponent<Hexagon>().CurrentTile.AxialCoords)
             {
                 return hexObject;
+            }
+        }
+
+        return null;
+    }
+
+    Hexagon FindHex(int id)
+    {
+        foreach (var hexTile in _hexTiles)
+        {
+            if (id == hexTile.Id)
+            {
+                return hexTile.Hexagon;
             }
         }
 
@@ -705,21 +770,49 @@ public class GameManager : MonoBehaviour
         selectionImage.transform.localRotation = Quaternion.Euler(0, 0, angle + defaultAngle);
     }
 
-    void IncrementMoveCount()
+    void IncrementMoveCount(int moveCount = -1)
     {
+        if (moveCount != -1)
+        {
+            var txtobj = GameObject.Find("txtMoveCount").GetComponent<TMPro.TextMeshProUGUI>();
 
-        var txtobj = GameObject.Find("txtMoveCount").GetComponent<TMPro.TextMeshProUGUI>();
-        var moveCount = Convert.ToInt32(txtobj.text);
-        moveCount++;
-        txtobj.text = moveCount.ToString();
+            txtobj.text = moveCount.ToString();
+        }
+        else
+        {
+            var txtobj = GameObject.Find("txtMoveCount").GetComponent<TMPro.TextMeshProUGUI>();
+            _moveCount += 1;
+            txtobj.text = _moveCount.ToString();
+        }
+
+
     }
 
     void IncrementScore(int score)
     {
+        if (score == 0)
+        {
+            GameObject.Find("txtScore").GetComponent<TMPro.TextMeshProUGUI>().text = 0.ToString();
+            return;
+        }
+
         var txtobj = GameObject.Find("txtScore").GetComponent<TMPro.TextMeshProUGUI>();
-        var scoreCount = Convert.ToInt32(txtobj.text);
-        scoreCount += score;
-        txtobj.text = scoreCount.ToString();
+        //var scoreCount = Convert.ToInt32(txtobj.text);
+        _score += score;
+        _bombScore += score;
+        txtobj.text = _score.ToString();
+    }
+
+    void DecreaseBombTimers()
+    {
+        //Find all bombs. Decrease their timers by one
+        foreach (var hexTile in _hexTiles)
+        {
+            if (hexTile.IsBomb)
+            {
+                hexTile.Hexagon.UpdateBombText();
+            }
+        }
     }
 
     #region Selection
@@ -780,7 +873,6 @@ public class GameManager : MonoBehaviour
     }
 
     #endregion
-
 
     #region Utility
 

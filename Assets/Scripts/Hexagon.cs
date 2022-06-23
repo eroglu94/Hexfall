@@ -1,38 +1,63 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class Hexagon : MonoBehaviour
 {
-    // Start is called before the first frame update
-    //public GridManager.Hex Hex;
+    public GameObject BombObject;
+    public int BombMaxRound = 6;
     public GridManager.HexTile CurrentTile;
-    //public Hexagon(Color color)
-    //{
-    //    this.GetComponent<SpriteRenderer>().color = color;
-    //    this.CurrentTile.Color = color;
-    //}
-
+    // Start is called before the first frame update
     void Start()
     {
+        //var gameObj = new GameObject("text");
+        //gameObj.transform.SetParent(this.transform);
+        //gameObj.AddComponent<TMPro.TextMeshPro>();
+        //gameObj.GetComponent<TMPro.TextMeshPro>().text = "5";
 
     }
 
     // Update is called once per frame
     void Update()
     {
-        //this.GetComponent<SpriteRenderer>().color = Color;
-        //CurrentTile.Hexagon = this;
-
-        // Spin the object around the target at 20 degrees/second.
-        //transform.RotateAround(this.transform.position, Vector3.forward, 20 * Time.deltaTime);
-        //transform.RotateAround(new Vector3(30,30), Vector3.forward, 20 * Time.deltaTime);
-        //if (CurrentTile.Hexagon == null)
-        //{
-        //    CurrentTile.Hexagon = this;
-        //}
+        // Bugfix - Have bomb child object but don't have IsBomb property?
+        if (transform.childCount > 0 && !CurrentTile.IsBomb)
+        {
+            CurrentTile.IsBomb = true;
+        }
     }
 
+    public void MakeSelfBomb()
+    {
+        var childObj = Instantiate(BombObject, this.transform);
+        childObj.transform.localPosition = new Vector3(0, 0, -20);
+        this.GetComponentInChildren<TMPro.TextMeshPro>().text = BombMaxRound.ToString();
+        CurrentTile.IsBomb = true;
+    }
+
+    public void Disarm()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Destroy(transform.GetChild(i).gameObject);
+        }
+        CurrentTile.IsBomb = false;
+    }
+    public void UpdateBombText()
+    {
+        try
+        {
+            var oldNumber = Convert.ToInt32(this.GetComponentInChildren<TextMeshPro>().text);
+            oldNumber--;
+            this.GetComponentInChildren<TextMeshPro>().text = oldNumber.ToString();
+        }
+        catch (Exception e)
+        {
+
+        }
+    }
     public void UpdateSelf()
     {
         this.GetComponent<SpriteRenderer>().color = CurrentTile.Color;
@@ -84,7 +109,7 @@ public class Hexagon : MonoBehaviour
     public void Switch(GridManager.HexTile newHexagon, bool preserveColor = true, bool updateSelf = true)
     {
         var colorBefore = CurrentTile.Color;
-        
+
         CurrentTile = newHexagon;
         CurrentTile.Hexagon = this;
         if (preserveColor)
