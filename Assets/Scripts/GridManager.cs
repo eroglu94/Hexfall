@@ -11,8 +11,6 @@ using Vector2 = UnityEngine.Vector2;
 public class GridManager : MonoBehaviour
 {
     [SerializeReference] private Vector2 _canvasSize;
-    [SerializeReference] private GameObject _hexagonPrefab; //TODO transfer this GameManager
-
     [System.Serializable]
     public class HexTile
     {
@@ -48,22 +46,16 @@ public class GridManager : MonoBehaviour
     [System.Serializable]
     public class HexTileNeighbor
     {
-        public string name;
+        public string Name;
         public Vector2 AxialCordinate;
     }
 
-    // Start is called before the first frame update
-    void Start()
-    {
 
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
-
+    /// <summary>
+    /// Initializes Grid System, Calculates relative positions and inner fields of hexTiles for future usages
+    /// </summary>
+    /// <param name="gridSize"></param>
+    /// <returns></returns>
     public List<HexTile> InitializeGrid(Vector2 gridSize)
     {
         List<HexTile> hexTiles = new List<HexTile>();
@@ -103,12 +95,6 @@ public class GridManager : MonoBehaviour
                 }
 
 
-                //// TEST
-                //var test = HexagonPrefab.GetComponent<HexTile>();
-                //var test2 = new HexTile(new Vector2(), new Color());
-                //var test3 = HexagonPrefab;
-
-
                 var newHex = new HexTile
                 {
                     Location = tempPos,
@@ -136,11 +122,11 @@ public class GridManager : MonoBehaviour
 
         var leftMargin = (canvasWidthHeight.x - objRectangle.Width) / 2;
         var topMargin = (canvasWidthHeight.y - objRectangle.Height) / 2;
-        topMargin = 0; // We won't use topMargin at the moment
-        
+        topMargin = topMargin / 2; 
+
         foreach (var hexTile in hexTiles)
         {
-            hexTile.Location = new Vector2(hexTile.Location.x + leftMargin, hexTile.Location.y);
+            hexTile.Location = new Vector2(hexTile.Location.x + leftMargin, hexTile.Location.y - topMargin);
         }
         //-------------------------------------------------------------
 
@@ -217,30 +203,30 @@ public class GridManager : MonoBehaviour
             new HexTileNeighbor
             {
                 AxialCordinate = new Vector2(0,-1),
-                name = "N"
+                Name = "N"
             },
             new HexTileNeighbor
             {
                 AxialCordinate = new Vector2(-1,0),
-                name = "NW"
+                Name = "NW"
             },new HexTileNeighbor
             {
                 AxialCordinate = new Vector2(-1,+1),
-                name = "SW"
+                Name = "SW"
             }, new HexTileNeighbor
             {
                 AxialCordinate = new Vector2(0, +1),
-                name = "S"
+                Name = "S"
             },
             new HexTileNeighbor
             {
                 AxialCordinate = new Vector2(+1,0),
-                name = "SE"
+                Name = "SE"
             },
             new HexTileNeighbor
             {
             AxialCordinate = new Vector2(+1,-1),
-            name = "NE"
+            Name = "NE"
             }
         };
 
@@ -250,7 +236,7 @@ public class GridManager : MonoBehaviour
             {
                 AxialCordinate = new Vector2(location.x + axialDirectionVectors[i].AxialCordinate.x,
                 location.y + axialDirectionVectors[i].AxialCordinate.y),
-                name = axialDirectionVectors[i].name
+                Name = axialDirectionVectors[i].Name
             };
             axialNeighbors.Add(neighborCoordinate);
         }
@@ -277,7 +263,11 @@ public class GridManager : MonoBehaviour
 
 
     #region Utility
-
+    /// <summary>
+    /// Finds Boundry as Rectangle of given coordinate list
+    /// </summary>
+    /// <param name="tiles"></param>
+    /// <returns></returns>
     Rectangle BaundaryOfCoordinates(List<Vector2> tiles)
     {
         //starting point is set high
@@ -316,42 +306,4 @@ public class GridManager : MonoBehaviour
     }
 
     #endregion
-    List<Color> GenerateRandomColors(int numberOfColors)
-    {
-        //TODO delete this function. Transfer it to GameManager.cs
-
-        var colorList = new List<Color>();
-
-        //for (int i = 0; i < numberOfColors; i++)
-        //{
-        //    Color randomColor = new Color(
-        //        Random.Range(0f, 1f),
-        //        Random.Range(0f, 1f),
-        //        Random.Range(0f, 1f)
-        //    );
-        //    //var randomColor = Random.ColorHSV(0f, 1f, 1f, 1f, 0.5f, 1f);
-        //    colorList.Add(randomColor);
-
-        //}
-
-        var indexcolors = new string[]
-        {
-            "#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059",
-            "#FFDBE5", "#7A4900", "#0000A6", "#63FFAC", "#B79762", "#004D43", "#8FB0FF", "#997D87",
-            "#5A0007", "#809693", "#FEFFE6", "#1B4400", "#4FC601", "#3B5DFF", "#4A3B53", "#FF2F80",
-            "#61615A", "#BA0900", "#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#B903AA", "#D16100",
-            "#DDEFFF", "#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F",
-            "#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99", "#001E09",
-            "#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66",
-            "#885578", "#FAD09F", "#FF8A9A", "#D157A0", "#BEC459", "#456648", "#0086ED", "#886F4C",
-        };
-
-        for (int i = 0; i < numberOfColors; i++)
-        {
-            ColorUtility.TryParseHtmlString(indexcolors[i], out var tmpColor);
-            colorList.Add(tmpColor);
-        }
-
-        return colorList;
-    }
 }

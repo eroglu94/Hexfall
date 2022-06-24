@@ -6,44 +6,52 @@ using UnityEngine;
 
 public class Hexagon : MonoBehaviour
 {
-    public GameObject BombObject;
+    public GameObject BombText;
+    public Sprite BombImage;
     public int BombMaxRound = 6;
     public GridManager.HexTile CurrentTile;
+
+    private Sprite _defaultImage;
+
     // Start is called before the first frame update
     void Start()
     {
-        //var gameObj = new GameObject("text");
-        //gameObj.transform.SetParent(this.transform);
-        //gameObj.AddComponent<TMPro.TextMeshPro>();
-        //gameObj.GetComponent<TMPro.TextMeshPro>().text = "5";
-
+        _defaultImage = transform.GetComponent<SpriteRenderer>().sprite;
     }
 
     // Update is called once per frame
     void Update()
     {
         // Bugfix - Have bomb child object but don't have IsBomb property?
-        if (transform.childCount > 0 && !CurrentTile.IsBomb)
+        //if (transform.childCount > 0 && !CurrentTile.IsBomb)
+        //{
+        //    CurrentTile.IsBomb = true;
+        //    transform.GetComponent<SpriteRenderer>().sprite = BombImage;
+        //}
+        if (!CurrentTile.IsBomb && transform.childCount > 0)
         {
-            CurrentTile.IsBomb = true;
+            Disarm();
         }
     }
 
     public void MakeSelfBomb()
     {
-        var childObj = Instantiate(BombObject, this.transform);
+        CurrentTile.IsBomb = true;
+        var childObj = Instantiate(BombText, this.transform);
         childObj.transform.localPosition = new Vector3(0, 0, -20);
         this.GetComponentInChildren<TMPro.TextMeshPro>().text = BombMaxRound.ToString();
-        CurrentTile.IsBomb = true;
+        transform.GetComponent<SpriteRenderer>().sprite = BombImage;
     }
 
     public void Disarm()
     {
+        CurrentTile.IsBomb = false;
+        transform.GetComponent<SpriteRenderer>().sprite = _defaultImage;
         for (int i = 0; i < transform.childCount; i++)
         {
             Destroy(transform.GetChild(i).gameObject);
         }
-        CurrentTile.IsBomb = false;
+
     }
     public bool UpdateBombText()
     {
@@ -58,8 +66,7 @@ public class Hexagon : MonoBehaviour
                 // Bomb is exploded
                 return true;
             }
-
-
+            
         }
         catch (Exception e)
         {
@@ -90,18 +97,11 @@ public class Hexagon : MonoBehaviour
     {
         this.GetComponent<SpriteRenderer>().color = CurrentTile.Color;
     }
-
-    public void Switch(Hexagon newHexagon, bool preserveColor = true)
-    {
-        var colorBefore = CurrentTile.Color;
-
-        CurrentTile = newHexagon.CurrentTile;
-        if (preserveColor)
-            CurrentTile.Color = colorBefore;
-
-        UpdateSelf();
-    }
-
+    
+    /// <summary>
+    /// Shifts self with given hexagon. Deprecated. Switch function can be used
+    /// </summary>
+    /// <param name="newHexTile"></param>
     public void Shift(GridManager.HexTile newHexTile)
     {
         CurrentTile.Neighbors = newHexTile.Neighbors;
@@ -115,6 +115,13 @@ public class Hexagon : MonoBehaviour
         CurrentTile.HexagonSize = newHexTile.HexagonSize;
         CurrentTile.Id = newHexTile.Id;
     }
+
+    /// <summary>
+    /// Switches self with given hexagon
+    /// </summary>
+    /// <param name="newHexagon"></param>
+    /// <param name="preserveColor"></param>
+    /// <param name="updateSelf"></param>
     public void Switch(GridManager.HexTile newHexagon, bool preserveColor = true, bool updateSelf = true)
     {
         var colorBefore = CurrentTile.Color;
@@ -128,6 +135,17 @@ public class Hexagon : MonoBehaviour
         {
             UpdateSelf();
         }
+    }
+
+    public void Switch(Hexagon newHexagon, bool preserveColor = true)
+    {
+        var colorBefore = CurrentTile.Color;
+
+        CurrentTile = newHexagon.CurrentTile;
+        if (preserveColor)
+            CurrentTile.Color = colorBefore;
+
+        UpdateSelf();
     }
 
     IEnumerator MoveToPosition(Transform transform, Vector3 position, float timeToReachTarget)

@@ -14,10 +14,13 @@ public class GameManager : MonoBehaviour
     [SerializeReference] private int _numberOfColors = 5;
     [SerializeReference] private Vector2 _gridSize = new Vector2(8, 9);
     [SerializeReference] private int _scorePerHexagon = 5;
-    [SerializeReference] private int _bombCallScore = 300;
+    [SerializeReference] private int _bombCallScore = 1000;
     [SerializeReference] private GameObject _hexagonPrefab;
     [SerializeReference] private GameObject _particleEffect;
     [SerializeReference] private GameObject _sparkParticles;
+
+    [SerializeReference]
+    private Color32[] _hexagonColors = new[] { new Color32(28, 230, 255, 255), new Color32(255, 74, 70, 255), new Color32(0, 137, 65, 255), new Color32(226, 7, 160, 255), new Color32(110, 255, 70, 255), new Color32(240, 255, 70, 255), new Color32(0, 77, 67, 255), new Color32(122, 73, 0, 255) };
 
     //private GameObject _selectedHexagon;
     private int _selectedHexagon;
@@ -37,12 +40,13 @@ public class GameManager : MonoBehaviour
     private bool _isHexesMoving;
     private bool _isGameOver;
 
+
+
+
     // Start is called before the first frame update
     void Start()
     {
-        var test = new GridManager.HexTile();
-
-        Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.Full); // Remove stack trace of Debug.Log messages
+        Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.Full); // Log stack trace
 
         StartGame();
         im = InputManager.Instance;
@@ -55,23 +59,9 @@ public class GameManager : MonoBehaviour
         {
             return;
         }
+
+
         var activeTouch = im.activeTouch;
-
-
-        //// Reassign Selected Hexagon by finding new object with previous coordinate
-        //// We did this because _selectedHexagon misbehaviour.
-        //// Steps to produce: Selected hexagons will explode, columns will shift down and explode also. When this happens, _selectedHexagon is misheaving.
-        //try
-        //{
-        //    _selectedHexagon = _hexTiles
-        //        .Find(x => x.OffsetCoords == _selectedHexagon.GetComponent<Hexagon>().CurrentTile.OffsetCoords).Hexagon
-        //        .gameObject;
-        //}
-        //catch (Exception e)
-        //{
-        //    Debug.Log(e.Message);
-        //}
-
 
 
         // Finger up
@@ -85,46 +75,37 @@ public class GameManager : MonoBehaviour
                 return;
             }
 
+            //Check if ViewMove button is triggered
             if (im.Hit.name == "ViewMove")
             {
                 ViewPossibleMoveButton();
                 return;
             }
 
-            _selectedHexagon = im.Hit.GetComponent<Hexagon>().CurrentTile.Id;
-
-            if (FindHex(_selectedHexagon))
+            //Allow selecting when no hexes are moving around
+            if (!_isHexesMoving)
+            {
+                _selectedHexagon = im.Hit.GetComponent<Hexagon>().CurrentTile.Id;
+            }
+            if (FindHex(_selectedHexagon) && !_isHexesMoving)
             {
                 AlignSelectionImage(FindHex(_selectedHexagon));
             }
 
         }
 
+        // Don't let code pass this when game is over
         if (_isGameOver)
         {
             return;
         }
 
-        //if ((Touch.activeFingers.Count == 1 && activeTouch.startScreenPosition.y - 10 > activeTouch.screenPosition.y) || _isRotating)
-        //{
-        //    // Swipe iþlemi oldu demektir.
-        //    // Down Swipe
-        //    // RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
-
-        //    _isRotating = true;
-        //    RotateSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>());
-
-        //    if (_selectedHexagon.transform.rotation.eulerAngles.z >= 115)
-        //    {
-        //        _isRotating = false;
-        //        ManualRotationSelectedHexagons(_selectedHexagon.GetComponent<Hexagon>(), 120);
-        //    }
-        //}
-
-        if ((Touch.activeFingers.Count == 1 && activeTouch.startScreenPosition.y + 10 < activeTouch.screenPosition.y) || _isRotating)
+        // Check if user swiped his finger to rotate the hexes
+        // Allow enter for completion of rotation animation
+        if (((Touch.activeFingers.Count == 1 && activeTouch.startScreenPosition.y + 10 < activeTouch.screenPosition.y) || (Touch.activeFingers.Count == 1 && activeTouch.startScreenPosition.y - 10 > activeTouch.screenPosition.y))
+          || _isRotating)
         {
-            // Swipe iþlemi oldu demektir.
-            // Down Swipe
+            // Swipe happened
             // Reset rotateCount
             //---------------------------
             if (!_isRotating)
@@ -143,7 +124,6 @@ public class GameManager : MonoBehaviour
                 if (FindHex(_selectedHexagon).transform.rotation.eulerAngles.z >= 120)
                 {
                     // One rotate is complete. Check for score, if no score, rotate one more
-
                     _isRotating = false;
                     ManualRotationSelectedHexagons(FindHex(_selectedHexagon), 120);
                     UpdateGrid();
@@ -164,20 +144,16 @@ public class GameManager : MonoBehaviour
                         _rotateCount++;
                         goto RotateAgain;
                     }
-
-
                 }
             }
         }
 
-
+        // General check of game in each frame
         if (!_isRotating)
         {
             StartCoroutine(IsHexesMoving());
             StartCoroutine(CheckGame());
         }
-
-
     }
 
     void StartGame()
@@ -185,7 +161,6 @@ public class GameManager : MonoBehaviour
         // Initialize Grid
         // Initialize HexPrefabs
         //-------------------------------
-
 
         var gridManager = GetComponent<GridManager>();
 
@@ -219,10 +194,13 @@ public class GameManager : MonoBehaviour
         StartGame();
     }
 
+    /// <summary>
+    /// Wrapper update function for ScoreCheck, FillEmptySpaces after destruction, Spawn new hexagons
+    /// </summary>
+    /// <returns></returns>
     IEnumerator CheckGame()
     {
-        // This will check 
-
+        // This will check game status
 
         //Check For Score
         var scoreHexagons = CheckForScore();
@@ -252,7 +230,8 @@ public class GameManager : MonoBehaviour
         //----------------------------------------------
 
 
-
+        // Fill the empty spaces below the columns
+        // At the same time start spawning new ones
         if (!_isDestroying && _isSpawning && !_isHexesMoving)
         {
             if (!_isFilling)
@@ -262,35 +241,14 @@ public class GameManager : MonoBehaviour
             SpawnMissingHexagons();
             _isSpawning = false;
         }
-
-
-        ////Spawn Missing Hexagons
-        //var spawnedHexagons = SpawnMissingHexagons();
-        //if (spawnedHexagons.Count != 0 && !_isDestroying)
-        //{
-
-        //    //Slide down the new hexagons to their place.
-        //    _isSpawning = true;
-        //    foreach (var spawnedHexagon in spawnedHexagons)
-        //    {
-        //        var step = 1f * Time.deltaTime; // calculate distance to move
-        //        var position = spawnedHexagon.Hexagon.gameObject.transform.localPosition;
-        //        var targetPosition = spawnedHexagon.Location;
-        //        StartCoroutine(MoveToPosition(spawnedHexagon.Hexagon.transform, targetPosition, 1f));
-
-        //    }
-
-        //    //if (Vector3.Distance(position, targetPosition) < 0.001f)
-        //    //{
-        //    //    _isSpawning = false;
-        //    //}
-
-        //}
-        ////-----------------------------------------
-
+        //--------------------------------------
         yield return new WaitForSeconds(0.05f);
     }
 
+    /// <summary>
+    /// Initialize hexes as game objects. Uses grid data generated in Grid Manager
+    /// </summary>
+    /// <param name="numberOfColors"></param>
     void InitializeHexes(int numberOfColors)
     {
         // First, create HexTiles and check for and available score. We don't want player to get score at the beginning. It is not fair :/
@@ -336,6 +294,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Iterates through all _hextiles. Finds destroyed ones and spawns them.
+    /// </summary>
+    /// <returns>Spawned Hextiles</returns>
     List<GridManager.HexTile> SpawnMissingHexagons()
     {
         var spawnedHexagons = new List<GridManager.HexTile>();
@@ -345,7 +307,7 @@ public class GameManager : MonoBehaviour
             {
                 //Create new one at top of the screen. At the same line
                 if (_bombScore >= _bombCallScore)
-                {
+                {   // Spawns bomb hexagon if score threshold is passed
                     _bombScore = _bombScore - _bombCallScore;
                     hexTile.IsBomb = true;
                     hexTile.Hexagon.MakeSelfBomb();
@@ -364,7 +326,10 @@ public class GameManager : MonoBehaviour
         return spawnedHexagons;
     }
 
-    public void FillEmptyPlaces()
+    /// <summary>
+    /// Fills empty hextiles upon destructon by shifting each object in that columns
+    /// </summary>
+    void FillEmptyPlaces()
     {
 
         // Iterate destroyed hexagons.
@@ -430,36 +395,10 @@ public class GameManager : MonoBehaviour
         UpdateHexTiles();
     }
 
-    public void FillEmptyPlaces2()
-    {
-        // Move the columns to down to fill the empty places
-        // Iterate destorey hexagons. Shift remaining hexes in that column.
-
-
-        var destroyedHexagons = _hexObjects.FindAll(x => x.GetComponent<Hexagon>().CurrentTile.IsDestroyed);
-
-        foreach (var destroyedHexagon in destroyedHexagons)
-        {
-            var column = destroyedHexagon.GetComponent<Hexagon>().CurrentTile.OffsetCoords.x;
-            var row = destroyedHexagon.GetComponent<Hexagon>().CurrentTile.OffsetCoords.y;
-
-            foreach (var hexObject in _hexObjects)
-            {
-                if (hexObject.GetComponent<Hexagon>().CurrentTile.OffsetCoords.x == column && hexObject.GetComponent<Hexagon>().CurrentTile.OffsetCoords.y < row)
-                {
-
-                }
-            }
-
-        }
-
-
-
-
-
-
-    }
-
+    /// <summary>
+    /// Checks for 3-hexagonal group of the same color are together at the moment, If true, function will return that group
+    /// </summary>
+    /// <returns>3-hexagonal group of the same color hexagon tiles</returns>
     List<GridManager.HexTile> CheckForScore()
     {
         // This will check the Hexagon Grid for possible same color grouping.
@@ -504,6 +443,10 @@ public class GameManager : MonoBehaviour
 
     }
 
+    /// <summary>
+    /// Checks for possible player move by iterating through all hextiles, does virtual move for each of them and checks for possible score
+    /// </summary>
+    /// <returns>hextile that has score potential if rotated by selecting it</returns>
     GridManager.HexTile CheckForPossibleMove()
     {
         // We need UpdateGrid & CheckForScore functions to calculate possible move
@@ -512,6 +455,7 @@ public class GameManager : MonoBehaviour
         //------------------------------------------------------
         enabled = false;
         UpdateHexTiles(); // In case of loss of data;
+
 
         foreach (var hexTile in _hexTiles)
         {
@@ -529,6 +473,7 @@ public class GameManager : MonoBehaviour
                     possibleScore = tmpScore;
                 }
             }
+
             // Before returning our result, we need to make our grid same as before.
             // We need the reset the rotation of current hex group.
             // Thats why we don't immediatly returned the result. We should wait small loop to finish;
@@ -543,25 +488,10 @@ public class GameManager : MonoBehaviour
         return null;
     }
 
-    void ViewPossibleMoveButton()
-    {
-        var possibleMove = CheckForPossibleMove();
-        if (possibleMove != null)
-        {
-            var spawnPosition = new Vector3(possibleMove.Location.x,
-                possibleMove.Location.y, -20);
-
-            GameObject particle = Instantiate(_sparkParticles, spawnPosition, Quaternion.identity);
-
-            particle.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
-        }
-        else
-        {
-            GameObject.Find("txtMessage").GetComponent<TMPro.TextMeshProUGUI>().text = "No Possible Move. Game Over :(";
-            _isGameOver = true;
-        }
-    }
-
+    /// <summary>
+    /// Checks all hexes for any movement. Edits global variable _isHexesMoving. Useful for waiting for animations to complete.
+    /// </summary>
+    /// <returns></returns>
     IEnumerator IsHexesMoving()
     {
         var p1 = new List<Vector3>();
@@ -577,7 +507,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.1f);
 
         var p2 = new List<Vector3>();
         foreach (var hexTile in _hexTiles)
@@ -613,9 +543,9 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            _isHexesMoving = false;
 
             //Check if there is any hex not in his location
+            var anyMove = false;
             foreach (var hexTile in _hexTiles)
             {
                 var targetLoc = hexTile.Location;
@@ -624,15 +554,18 @@ public class GameManager : MonoBehaviour
                 if (Vector3.Distance(currLoc, targetLoc) > 0.01f)
                 {
                     hexTile.Hexagon.UpdateSelfWithTransition();
+                    anyMove = true;
                 }
-
             }
 
-
+            _isHexesMoving = anyMove;
         }
     }
 
-    void UpdateGrid(string swipeDirection = "up")
+    /// <summary>
+    /// User swipes the selected hexagons then Update grid after each rotation animation of selected hexagons are complete
+    /// </summary>
+    void UpdateGrid()
     {
         // This function will update grid after each rotation animation of selected hexagons are complete.
         // "up" & "down" swipe
@@ -650,7 +583,7 @@ public class GameManager : MonoBehaviour
 
 
         // ReArrange _hexGameObject list
-        if (current.CurrentTile.Neighbors[0].name + current.CurrentTile.Neighbors[1].name == "NNE")
+        if (current.CurrentTile.Neighbors[0].Name + current.CurrentTile.Neighbors[1].Name == "NNE")
         {
 
             current.Switch(new GridManager.HexTile(secondN.CurrentTile));
@@ -675,7 +608,10 @@ public class GameManager : MonoBehaviour
         UpdateHexTiles();
     }
 
-    public void UpdateHexTiles()
+    /// <summary>
+    /// Iterates hex gameObjects and saves them in _hexTiles. Safety function for in case of loss of data when reference editing in some functions
+    /// </summary>
+    void UpdateHexTiles()
     {
         // Update hexTiles
         _hexTiles = new List<GridManager.HexTile>();
@@ -686,6 +622,33 @@ public class GameManager : MonoBehaviour
         _hexTiles.Sort((x, y) => x.Id.CompareTo(y.Id));
     }
 
+    /// <summary>
+    /// DecreaseBomb timers by iterating all _hextiles. Should be called before or after the user's successfull move
+    /// </summary>
+    void DecreaseBombTimers()
+    {
+        //Find all bombs. Decrease their timers by one
+        foreach (var hexTile in _hexTiles)
+        {
+            if (hexTile.IsBomb)
+            {
+                var isBombExploded = hexTile.Hexagon.UpdateBombText();
+
+                if (isBombExploded)
+                {
+                    // Game Over
+                    GameObject.Find("txtMessage").GetComponent<TMPro.TextMeshProUGUI>().text = "Bomb is exploded. Game Over :(";
+                    _isGameOver = true;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Finds neighbor hexagons
+    /// </summary>
+    /// <param name="neighbors"></param>
+    /// <returns>Hexagon</returns>
     List<Hexagon> FindNeighborHexagons(List<GridManager.HexTileNeighbor> neighbors)
     {
         var neighborGameObjects = new List<Hexagon>();
@@ -700,6 +663,11 @@ public class GameManager : MonoBehaviour
         return neighborGameObjects;
     }
 
+    /// <summary>
+    /// Finds Neighbor Hex Tiles
+    /// </summary>
+    /// <param name="neighbors"></param>
+    /// <returns>HexTile</returns>
     List<GridManager.HexTile> FindNeighborHexTiles(List<GridManager.HexTileNeighbor> neighbors)
     {
         var neighborGameObjects = new List<GridManager.HexTile>();
@@ -714,19 +682,11 @@ public class GameManager : MonoBehaviour
         return neighborGameObjects;
     }
 
-    GameObject FindHexObj(Vector2 axialCoord)
-    {
-        foreach (var hexObject in _hexObjects)
-        {
-            if (axialCoord == hexObject.GetComponent<Hexagon>().CurrentTile.AxialCoords)
-            {
-                return hexObject;
-            }
-        }
-
-        return null;
-    }
-
+    /// <summary>
+    /// Finds Hexagon in _hexTiles
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     Hexagon FindHex(int id)
     {
         foreach (var hexTile in _hexTiles)
@@ -740,47 +700,16 @@ public class GameManager : MonoBehaviour
         return null;
     }
 
-    List<Hexagon> FindNeighborObjects2(List<GridManager.HexTileNeighbor> neighbors)
-    {
-        var neighborGameObjects = new List<Hexagon>();
-
-        foreach (var neighbor in neighbors)
-        {
-            var element = _hexTiles.Find(x => x.AxialCoords == neighbor.AxialCordinate);
-
-            if (neighborGameObjects.Count == 1)
-            {
-                // Check if previously founded neighbor is also neigbor of the current one.
-                //neighborGameObjects[0];
-                //element
-                if (element.AllNeighbors.Exists(x => x.AxialCordinate == neighborGameObjects[0].CurrentTile.AxialCoords))
-                {
-                    neighborGameObjects.Add(element.Hexagon);
-                    return neighborGameObjects;
-                }
-                continue; // Continue the loop until find suitable neighbor
-            }
-
-            neighborGameObjects.Add(element.Hexagon);
-
-            // Returns when found 2 neighbours.
-            if (neighborGameObjects.Count == 2)
-            {
-                return neighborGameObjects;
-            }
-        }
-
-        // Code should never come to this line.
-        return new List<Hexagon>();
-    }
-
+    /// <summary>
+    /// Spawns 360 degree pixel particles on given hexagon
+    /// </summary>
+    /// <param name="destroyedHexagon"></param>
     void SpawnDestroyParticles(Hexagon destroyedHexagon)
     {
         var spawnPosition = new Vector3(destroyedHexagon.transform.localPosition.x,
             destroyedHexagon.transform.localPosition.y, -20);
 
         GameObject particle = Instantiate(_particleEffect, spawnPosition, Quaternion.identity);
-        //particle.transform.localScale = Vector2.one * destroyedHexagon.CurrentTile.HexagonSize;
 
         var color1 = destroyedHexagon.CurrentTile.Color;
         var color2 = new Color(color1.r * 1.5f, color1.g * 1.5f, color1.b * 1.5f);
@@ -788,15 +717,17 @@ public class GameManager : MonoBehaviour
 
         var settings = particle.GetComponent<ParticleSystem>().main;
         var startColor = settings.startColor;
-        //startColor.mode = ParticleSystemGradientMode.TwoColors;
-        //startColor.colorMin = color1;
-        //startColor.colorMax = color2;
+
         settings.startColor = new ParticleSystem.MinMaxGradient(color1, color2);
 
         particle.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
 
     }
 
+    /// <summary>
+    /// Rotates selected hexagon group and selection image itself.
+    /// </summary>
+    /// <param name="selectedHexagon"></param>
     void RotateSelectedHexagons(Hexagon selectedHexagon)
     {
         var selectionImage = GameObject.FindGameObjectWithTag("Selection");
@@ -823,6 +754,11 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Manually rotate selected hexagons without animation.
+    /// </summary>
+    /// <param name="selectedHexagon"></param>
+    /// <param name="angle"></param>
     void ManualRotationSelectedHexagons(Hexagon selectedHexagon, int angle)
     {
         var selectionImage = GameObject.FindGameObjectWithTag("Selection");
@@ -852,6 +788,10 @@ public class GameManager : MonoBehaviour
         selectionImage.transform.localRotation = Quaternion.Euler(0, 0, angle + defaultAngle);
     }
 
+    /// <summary>
+    /// Increments MoveCount and updates UI text
+    /// </summary>
+    /// <param name="moveCount">if other than -1 is sended, it will override the moveCount UI</param>
     void IncrementMoveCount(int moveCount = -1)
     {
         if (moveCount != -1)
@@ -870,6 +810,10 @@ public class GameManager : MonoBehaviour
 
     }
 
+    /// <summary>
+    /// Inceremnt Score Count and updates UI text
+    /// </summary>
+    /// <param name="score">if 0 is sended, it will override UI text</param>
     void IncrementScore(int score)
     {
         if (score == 0)
@@ -885,22 +829,25 @@ public class GameManager : MonoBehaviour
         txtobj.text = _score.ToString();
     }
 
-    void DecreaseBombTimers()
+    /// <summary>
+    /// UI button. View Possible Move button function
+    /// </summary>
+    void ViewPossibleMoveButton()
     {
-        //Find all bombs. Decrease their timers by one
-        foreach (var hexTile in _hexTiles)
+        var possibleMove = CheckForPossibleMove();
+        if (possibleMove != null)
         {
-            if (hexTile.IsBomb)
-            {
-                var isBombExploded = hexTile.Hexagon.UpdateBombText();
+            var spawnPosition = new Vector3(possibleMove.Location.x,
+                possibleMove.Location.y, -20);
 
-                if (isBombExploded)
-                {
-                    // Game Over
-                    GameObject.Find("txtMessage").GetComponent<TMPro.TextMeshProUGUI>().text = "Bomb is exploded. Game Over :(";
-                    _isGameOver = true;
-                }
-            }
+            GameObject particle = Instantiate(_sparkParticles, spawnPosition, Quaternion.identity);
+
+            particle.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
+        }
+        else
+        {
+            GameObject.Find("txtMessage").GetComponent<TMPro.TextMeshProUGUI>().text = "No Possible Move. Game Over :(";
+            _isGameOver = true;
         }
     }
 
@@ -926,8 +873,8 @@ public class GameManager : MonoBehaviour
         //--------------------------------------------------------
 
         // Find order of neighbors and rotate the selection image
-        var n1 = hexagon.CurrentTile.Neighbors[0].name;
-        var n2 = hexagon.CurrentTile.Neighbors[1].name;
+        var n1 = hexagon.CurrentTile.Neighbors[0].Name;
+        var n2 = hexagon.CurrentTile.Neighbors[1].Name;
         var r = n1 + n2;
         var angle = 0;
         switch (r)
@@ -955,6 +902,7 @@ public class GameManager : MonoBehaviour
 
         }
 
+        GameObject.FindGameObjectWithTag("Selection").transform.localScale = Vector3.one * (hexagon.CurrentTile.HexagonSize * 1.3f);
         GameObject.FindGameObjectWithTag("Selection").transform.localRotation = new Quaternion(0, 0, angle, 0);
         GameObject.FindGameObjectWithTag("Selection").GetComponent<SelectionImage>().defaultAngle = angle;
 
@@ -965,71 +913,11 @@ public class GameManager : MonoBehaviour
 
     #region Utility
 
-    List<Color> GenerateRandomColors(int numberOfColors)
-    {
-        var colorList = new List<Color>();
-
-        //for (int i = 0; i < numberOfColors; i++)
-        //{
-        //    Color randomColor = new Color(
-        //        Random.Range(0f, 1f),
-        //        Random.Range(0f, 1f),
-        //        Random.Range(0f, 1f)
-        //    );
-        //    //var randomColor = Random.ColorHSV(0f, 1f, 1f, 1f, 0.5f, 1f);
-        //    colorList.Add(randomColor);
-
-        //}
-
-        var indexcolors = new string[]
-        {
-            "#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059",
-            "#FFDBE5", "#7A4900", "#0000A6", "#63FFAC", "#B79762", "#004D43", "#8FB0FF", "#997D87",
-            "#5A0007", "#809693", "#FEFFE6", "#1B4400", "#4FC601", "#3B5DFF", "#4A3B53", "#FF2F80",
-            "#61615A", "#BA0900", "#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#B903AA", "#D16100",
-            "#DDEFFF", "#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F",
-            "#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99", "#001E09",
-            "#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66",
-            "#885578", "#FAD09F", "#FF8A9A", "#D157A0", "#BEC459", "#456648", "#0086ED", "#886F4C",
-        };
-
-        for (int i = 0; i < numberOfColors; i++)
-        {
-            ColorUtility.TryParseHtmlString(indexcolors[i], out var tmpColor);
-            colorList.Add(tmpColor);
-        }
-
-        return colorList;
-    }
     Color PickRandomColor(int numberOfColors)
     {
 
-        //for (int i = 0; i < numberOfColors; i++)
-        //{
-        //    Color randomColor = new Color(
-        //        Random.Range(0f, 1f),
-        //        Random.Range(0f, 1f),
-        //        Random.Range(0f, 1f)
-        //    );
-        //    //var randomColor = Random.ColorHSV(0f, 1f, 1f, 1f, 0.5f, 1f);
-        //    colorList.Add(randomColor);
-
-        //}
-
-        var indexcolors = new string[]
-        {
-            "#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059",
-            "#FFDBE5", "#7A4900", "#0000A6", "#63FFAC", "#B79762", "#004D43", "#8FB0FF", "#997D87",
-            "#5A0007", "#809693", "#FEFFE6", "#1B4400", "#4FC601", "#3B5DFF", "#4A3B53", "#FF2F80",
-            "#61615A", "#BA0900", "#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#B903AA", "#D16100",
-            "#DDEFFF", "#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F",
-            "#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99", "#001E09",
-            "#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66",
-            "#885578", "#FAD09F", "#FF8A9A", "#D157A0", "#BEC459", "#456648", "#0086ED", "#886F4C",
-        };
-
-
-        ColorUtility.TryParseHtmlString(indexcolors[Random.Range(0, numberOfColors)], out var tmpColor);
+        var tmpColor = new Color();
+        tmpColor = _hexagonColors[Random.Range(0, numberOfColors)];
         return tmpColor;
     }
 

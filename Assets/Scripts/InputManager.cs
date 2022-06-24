@@ -48,35 +48,15 @@ public class InputManager : Singleton<InputManager>
             {
                 // Construct a ray from the current touch coordinates
                 //Ray ray = Camera.main.ScreenPointToRay(new Vector3(activeTouch.screenPosition.x, activeTouch.screenPosition.y, -10));
-
                 var hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(_activeTouch.screenPosition), Vector2.zero, 1000f);
-
-
                 if (hit.collider != null)
                 {
                     //Debug.Log(hit.collider.gameObject.name);
                     Hit = hit.collider.gameObject;
                 }
 
-                //if (Physics.Raycast(ray, out var hit, 100f))
-                //{
-                //    // Create a particle if hit
-                //    Hit = hit.transform.gameObject;
-                //    Debug.Log("Hit: " + Hit.name);
-
-                //}
             }
         }
     }
-
-    //private void StartTouch(InputAction.CallbackContext context)
-    //{
-    //    Debug.Log("Touch Started: " + touchControls.Touch.TouchPosition.ReadValue<Vector2>());
-    //}
-
-    //private void EndTouch(InputAction.CallbackContext context)
-    //{
-    //    Debug.Log("Touch Ended");
-    //}
 
 }
