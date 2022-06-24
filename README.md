@@ -10,6 +10,13 @@ So this assignment became a fast learn experience for me. I can skip most of the
 
 I have done all the instructions for the game
 
+Simple Gameplay
+
+ - Click and Swipe Up&Down to rotate selected hex group
+ - 3 same color hex comes together => Score++
+ - Click the eye icon if want clue for your next move
+ - Make sure you disarm the bomb before it explodes. 
+
 ![GameScreenshot](https://user-images.githubusercontent.com/11258914/175470836-260efac1-eacd-42af-99fe-52a72d98c448.png)
 
 
