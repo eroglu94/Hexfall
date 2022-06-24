@@ -17,6 +17,7 @@ public class GameManager : MonoBehaviour
     [SerializeReference] private int _bombCallScore = 300;
     [SerializeReference] private GameObject _hexagonPrefab;
     [SerializeReference] private GameObject _particleEffect;
+    [SerializeReference] private GameObject _sparkParticles;
 
     //private GameObject _selectedHexagon;
     private int _selectedHexagon;
@@ -34,10 +35,13 @@ public class GameManager : MonoBehaviour
     private bool _isFilling;
     private bool _isDestroying;
     private bool _isHexesMoving;
+    private bool _isGameOver;
 
     // Start is called before the first frame update
     void Start()
     {
+        var test = new GridManager.HexTile();
+
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.Full); // Remove stack trace of Debug.Log messages
 
         StartGame();
@@ -81,6 +85,12 @@ public class GameManager : MonoBehaviour
                 return;
             }
 
+            if (im.Hit.name == "ViewMove")
+            {
+                ViewPossibleMoveButton();
+                return;
+            }
+
             _selectedHexagon = im.Hit.GetComponent<Hexagon>().CurrentTile.Id;
 
             if (FindHex(_selectedHexagon))
@@ -88,6 +98,11 @@ public class GameManager : MonoBehaviour
                 AlignSelectionImage(FindHex(_selectedHexagon));
             }
 
+        }
+
+        if (_isGameOver)
+        {
+            return;
         }
 
         //if ((Touch.activeFingers.Count == 1 && activeTouch.startScreenPosition.y - 10 > activeTouch.screenPosition.y) || _isRotating)
@@ -199,7 +214,8 @@ public class GameManager : MonoBehaviour
         _score = 0;
         _moveCount = 0;
         _bombScore = 0;
-
+        _isGameOver = false;
+        GameObject.Find("txtMessage").GetComponent<TMPro.TextMeshProUGUI>().text = "Good Luck!";
         StartGame();
     }
 
@@ -488,6 +504,64 @@ public class GameManager : MonoBehaviour
 
     }
 
+    GridManager.HexTile CheckForPossibleMove()
+    {
+        // We need UpdateGrid & CheckForScore functions to calculate possible move
+        // Idea is, iterate _selectedHexagon one by one to all hexes.
+        // Do update grid and CheckForScore.
+        //------------------------------------------------------
+        enabled = false;
+        UpdateHexTiles(); // In case of loss of data;
+
+        foreach (var hexTile in _hexTiles)
+        {
+            _selectedHexagon = hexTile.Id;
+            var coords = hexTile.OffsetCoords;
+            var possibleScore = new List<GridManager.HexTile>();
+
+            for (int i = 0; i < 3; i++)
+            {
+                UpdateGrid();
+                var tmpScore = CheckForScore();
+
+                if (tmpScore.Count != 0)
+                {
+                    possibleScore = tmpScore;
+                }
+            }
+            // Before returning our result, we need to make our grid same as before.
+            // We need the reset the rotation of current hex group.
+            // Thats why we don't immediatly returned the result. We should wait small loop to finish;
+            if (possibleScore.Count != 0)
+            {
+                enabled = true;
+                return hexTile;
+            }
+        }
+
+        enabled = true;
+        return null;
+    }
+
+    void ViewPossibleMoveButton()
+    {
+        var possibleMove = CheckForPossibleMove();
+        if (possibleMove != null)
+        {
+            var spawnPosition = new Vector3(possibleMove.Location.x,
+                possibleMove.Location.y, -20);
+
+            GameObject particle = Instantiate(_sparkParticles, spawnPosition, Quaternion.identity);
+
+            particle.transform.SetParent(GameObject.FindGameObjectWithTag("HexagonArea").transform, false);
+        }
+        else
+        {
+            GameObject.Find("txtMessage").GetComponent<TMPro.TextMeshProUGUI>().text = "No Possible Move. Game Over :(";
+            _isGameOver = true;
+        }
+    }
+
     IEnumerator IsHexesMoving()
     {
         var p1 = new List<Vector3>();
@@ -540,6 +614,21 @@ public class GameManager : MonoBehaviour
         else
         {
             _isHexesMoving = false;
+
+            //Check if there is any hex not in his location
+            foreach (var hexTile in _hexTiles)
+            {
+                var targetLoc = hexTile.Location;
+                var currLoc = hexTile.Hexagon.gameObject.transform.localPosition;
+
+                if (Vector3.Distance(currLoc, targetLoc) > 0.01f)
+                {
+                    hexTile.Hexagon.UpdateSelfWithTransition();
+                }
+
+            }
+
+
         }
     }
 
@@ -557,24 +646,17 @@ public class GameManager : MonoBehaviour
         var firstN = FindNeighborHexagons(current.CurrentTile.Neighbors)[0];
         var secondN = FindNeighborHexagons(current.CurrentTile.Neighbors)[1];
 
-
-        //var tmp = new GameObject().AddComponent<Hexagon>();
-        //tmp.CurrentTile = current.CurrentTile;
-
         var tmpTile = new GridManager.HexTile(current.CurrentTile);
 
-        //current = firstN;
-        //firstN = secondN;
-        //secondN = tmp;
 
         // ReArrange _hexGameObject list
-
         if (current.CurrentTile.Neighbors[0].name + current.CurrentTile.Neighbors[1].name == "NNE")
         {
 
             current.Switch(new GridManager.HexTile(secondN.CurrentTile));
             secondN.Switch(new GridManager.HexTile(firstN.CurrentTile));
             firstN.Switch(new GridManager.HexTile(tmpTile));
+
             //Change _selectedHexagon to new one
             _selectedHexagon = firstN.CurrentTile.Id;
         }
@@ -810,7 +892,14 @@ public class GameManager : MonoBehaviour
         {
             if (hexTile.IsBomb)
             {
-                hexTile.Hexagon.UpdateBombText();
+                var isBombExploded = hexTile.Hexagon.UpdateBombText();
+
+                if (isBombExploded)
+                {
+                    // Game Over
+                    GameObject.Find("txtMessage").GetComponent<TMPro.TextMeshProUGUI>().text = "Bomb is exploded. Game Over :(";
+                    _isGameOver = true;
+                }
             }
         }
     }

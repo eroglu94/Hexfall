@@ -45,18 +45,27 @@ public class Hexagon : MonoBehaviour
         }
         CurrentTile.IsBomb = false;
     }
-    public void UpdateBombText()
+    public bool UpdateBombText()
     {
         try
         {
             var oldNumber = Convert.ToInt32(this.GetComponentInChildren<TextMeshPro>().text);
             oldNumber--;
             this.GetComponentInChildren<TextMeshPro>().text = oldNumber.ToString();
+
+            if (oldNumber <= -1)
+            {
+                // Bomb is exploded
+                return true;
+            }
+
+
         }
         catch (Exception e)
         {
 
         }
+        return false;
     }
     public void UpdateSelf()
     {
