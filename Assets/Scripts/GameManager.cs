@@ -214,11 +214,10 @@ public class GameManager : MonoBehaviour
                 SpawnDestroyParticles(scoreHexagon.Hexagon);
                 //Destroy(scoreHexagon.Hexagon.gameObject);
                 scoreHexagon.Hexagon.gameObject.transform.localPosition = new Vector3(-1000, -1000);
-                if (scoreHexagon.IsBomb)
-                {
-                    scoreHexagon.IsBomb = false;
-                    scoreHexagon.Hexagon.Disarm();
-                }
+
+                scoreHexagon.IsBomb = false;
+                scoreHexagon.Hexagon.Disarm();
+
                 scoreHexagon.IsDestroyed = true;
 
                 IncrementScore(_scorePerHexagon);
@@ -242,7 +241,7 @@ public class GameManager : MonoBehaviour
             _isSpawning = false;
         }
         //--------------------------------------
-        yield return new WaitForSeconds(0.05f);
+        yield return new WaitForSeconds(0.5f);
     }
 
     /// <summary>
@@ -306,6 +305,8 @@ public class GameManager : MonoBehaviour
             if (hexTile.IsDestroyed)
             {
                 //Create new one at top of the screen. At the same line
+                hexTile.IsBomb = false;
+                hexTile.Hexagon.Disarm();
                 if (_bombScore >= _bombCallScore)
                 {   // Spawns bomb hexagon if score threshold is passed
                     _bombScore = _bombScore - _bombCallScore;

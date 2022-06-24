@@ -28,10 +28,10 @@ public class Hexagon : MonoBehaviour
         //    CurrentTile.IsBomb = true;
         //    transform.GetComponent<SpriteRenderer>().sprite = BombImage;
         //}
-        if (!CurrentTile.IsBomb && transform.childCount > 0)
-        {
-            Disarm();
-        }
+        //if (!CurrentTile.IsBomb && transform.childCount > 0)
+        //{
+        //    Disarm();
+        //}
     }
 
     public void MakeSelfBomb()
@@ -81,7 +81,6 @@ public class Hexagon : MonoBehaviour
         CurrentTile.Hexagon = this;
         this.transform.localRotation = Quaternion.identity;
     }
-
     public void UpdateSelfWithTransition()
     {
         this.GetComponent<SpriteRenderer>().color = CurrentTile.Color;
@@ -92,14 +91,13 @@ public class Hexagon : MonoBehaviour
         StartCoroutine(MoveToPosition(this.transform, CurrentTile.Location, 0.3f));
 
     }
-
     public void UpdateColor()
     {
         this.GetComponent<SpriteRenderer>().color = CurrentTile.Color;
     }
     
     /// <summary>
-    /// Shifts self with given hexagon. Deprecated. Switch function can be used
+    /// Shifts self with given hexagon. Only locational data is shifted
     /// </summary>
     /// <param name="newHexTile"></param>
     public void Shift(GridManager.HexTile newHexTile)
@@ -126,7 +124,9 @@ public class Hexagon : MonoBehaviour
     {
         var colorBefore = CurrentTile.Color;
 
-        CurrentTile = newHexagon;
+        //CurrentTile = newHexagon;
+        Shift(newHexagon);
+
         CurrentTile.Hexagon = this;
         if (preserveColor)
             CurrentTile.Color = colorBefore;
