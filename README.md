@@ -1,6 +1,6 @@
 # Hexfall Clone Game
 
-Don't judge. This is version v.0.0.0.0.1
+This is version v.0.0.0.0.1
 
 I did this game after completing 30/140 lessons for "2D Game Programming with Unity" in Udemy.
 
